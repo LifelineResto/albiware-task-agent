@@ -5,6 +5,7 @@ All sensitive credentials are loaded from environment variables.
 
 from pydantic_settings import BaseSettings
 from typing import Optional
+import os
 
 
 class Settings(BaseSettings):
@@ -20,7 +21,7 @@ class Settings(BaseSettings):
     twilio_from_number: str
     
     # Database Configuration
-    database_url: str = "postgresql://user:password@localhost:5432/albiware_tracking"
+    database_url: str = os.getenv("DATABASE_URL", "postgresql://user:password@localhost:5432/albiware_tracking" )
     
     # Polling Configuration
     polling_interval_minutes: int = 15
@@ -37,11 +38,9 @@ class Settings(BaseSettings):
     port: int = 8000
     
     class Config:
-    	env_file = ".env"
-    	env_file_encoding = 'utf-8'
-    	case_sensitive = False
-    	extra = 'ignore'
-
+        env_file_encoding = 'utf-8'
+        case_sensitive = False
+        extra = 'ignore'
 
 
 # Global settings instance
