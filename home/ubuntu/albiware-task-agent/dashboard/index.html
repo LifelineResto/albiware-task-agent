@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Albiware Task Agent - Analytics Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .header h1 {
+            color: #2d3748;
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #718096;
+            font-size: 16px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .stat-card h3 {
+            color: #718096;
+            font-size: 14px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 10px;
+        }
+
+        .stat-card .value {
+            color: #2d3748;
+            font-size: 36px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .stat-card .label {
+            color: #a0aec0;
+            font-size: 14px;
+        }
+
+        .chart-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .chart-card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .chart-card h2 {
+            color: #2d3748;
+            font-size: 20px;
+            margin-bottom: 20px;
+        }
+
+        .table-card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+        }
+
+        .table-card h2 {
+            color: #2d3748;
+            font-size: 20px;
+            margin-bottom: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            background: #f7fafc;
+            color: #4a5568;
+            font-weight: 600;
+            text-align: left;
+            padding: 12px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #e2e8f0;
+            color: #2d3748;
+        }
+
+        tr:hover {
+            background: #f7fafc;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .badge-success {
+            background: #c6f6d5;
+            color: #22543d;
+        }
+
+        .badge-warning {
+            background: #feebc8;
+            color: #744210;
+        }
+
+        .badge-danger {
+            background: #fed7d7;
+            color: #742a2a;
+        }
+
+        .refresh-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .refresh-btn:hover {
+            background: #5a67d8;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #718096;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 Albiware Task Agent Dashboard</h1>
+            <p>Real-time analytics for task tracking and notification effectiveness</p>
+            <button class="refresh-btn" onclick="loadDashboard()">🔄 Refresh Data</button>
+        </div>
+
+        <div class="stats-grid" id="statsGrid">
+            <div class="loading">Loading statistics...</div>
+        </div>
+
+        <div class="chart-grid">
+            <div class="chart-card">
+                <h2>Task Status Distribution</h2>
+                <canvas id="taskStatusChart"></canvas>
+            </div>
+            <div class="chart-card">
+                <h2>Notification Effectiveness</h2>
+                <canvas id="notificationChart"></canvas>
+            </div>
+        </div>
+
+        <div class="chart-card" style="margin-bottom: 30px;">
+            <h2>Task Completion Timeline (Last 30 Days)</h2>
+            <canvas id="timelineChart"></canvas>
+        </div>
+
+        <div class="table-card">
+            <h2>Recent Task Completions</h2>
+            <table id="completionTable">
+                <thead>
+                    <tr>
+                        <th>Task Name</th>
+                        <th>Project</th>
+                        <th>Completed</th>
+                        <th>Status</th>
+                        <th>Notifications Sent</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td colspan="5" class="loading">Loading completion logs...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="table-card">
+            <h2>Recent Notifications</h2>
+            <table id="notificationTable">
+                <thead>
+                    <tr>
+                        <th>Task ID</th>
+                        <th>Recipient</th>
+                        <th>Type</th>
+                        <th>Status</th>
+                        <th>Sent At</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td colspan="5" class="loading">Loading notifications...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = window.location.origin;
+
+        async function fetchData(endpoint) {
+            try {
+                const response = await fetch(`${API_BASE}${endpoint}`);
+                return await response.json();
+            } catch (error) {
+                console.error(`Error fetching ${endpoint}:`, error);
+                return null;
+            }
+        }
+
+        async function loadDashboard() {
+            // Load summary statistics
+            const summary = await fetchData('/api/analytics/summary');
+            if (summary) {
+                renderStats(summary);
+            }
+
+            // Load completion logs
+            const completionLogs = await fetchData('/api/completion-logs?limit=50');
+            if (completionLogs) {
+                renderCompletionTable(completionLogs.logs);
+                renderTimelineChart(completionLogs.logs);
+                renderNotificationChart(completionLogs.logs);
+            }
+
+            // Load notifications
+            const notifications = await fetchData('/api/notifications?limit=50');
+            if (notifications) {
+                renderNotificationTable(notifications.notifications);
+            }
+
+            // Load tasks for status chart
+            const tasks = await fetchData('/api/tasks?limit=1000');
+            if (tasks) {
+                renderTaskStatusChart(tasks.tasks);
+            }
+        }
+
+        function renderStats(summary) {
+            const statsGrid = document.getElementById('statsGrid');
+            statsGrid.innerHTML = `
+                <div class="stat-card">
+                    <h3>Total Tasks</h3>
+                    <div class="value">${summary.total_tasks}</div>
+                    <div class="label">All tracked tasks</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Completed Tasks</h3>
+                    <div class="value">${summary.completed_tasks}</div>
+                    <div class="label">${Math.round((summary.completed_tasks / summary.total_tasks) * 100)}% completion rate</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Overdue Tasks</h3>
+                    <div class="value">${summary.overdue_tasks}</div>
+                    <div class="label">Requires attention</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Notifications Sent</h3>
+                    <div class="value">${summary.total_notifications_sent}</div>
+                    <div class="label">Avg ${summary.average_notifications_per_task} per task</div>
+                </div>
+            `;
+        }
+
+        function renderCompletionTable(logs) {
+            const tbody = document.getElementById('completionTable').querySelector('tbody');
+            if (logs.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="loading">No completion logs found</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = logs.slice(0, 20).map(log => {
+                const completedDate = new Date(log.completed_at).toLocaleDateString();
+                const statusBadge = log.was_overdue 
+                    ? `<span class="badge badge-danger">Overdue (${log.days_overdue} days)</span>`
+                    : `<span class="badge badge-success">On Time</span>`;
+                
+                return `
+                    <tr>
+                        <td>${log.task_name}</td>
+                        <td>${log.project_name}</td>
+                        <td>${completedDate}</td>
+                        <td>${statusBadge}</td>
+                        <td>${log.total_notifications_sent}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function renderNotificationTable(notifications) {
+            const tbody = document.getElementById('notificationTable').querySelector('tbody');
+            if (notifications.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="loading">No notifications found</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = notifications.slice(0, 20).map(notif => {
+                const sentDate = new Date(notif.sent_at).toLocaleString();
+                const typeBadge = notif.notification_type === 'overdue'
+                    ? `<span class="badge badge-danger">Overdue</span>`
+                    : `<span class="badge badge-warning">Reminder</span>`;
+                
+                return `
+                    <tr>
+                        <td>${notif.task_id}</td>
+                        <td>${notif.recipient_phone}</td>
+                        <td>${typeBadge}</td>
+                        <td>${notif.delivery_status}</td>
+                        <td>${sentDate}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function renderTaskStatusChart(tasks) {
+            const statusCounts = tasks.reduce((acc, task) => {
+                acc[task.status] = (acc[task.status] || 0) + 1;
+                return acc;
+            }, {});
+
+            const ctx = document.getElementById('taskStatusChart');
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(statusCounts),
+                    datasets: [{
+                        data: Object.values(statusCounts),
+                        backgroundColor: [
+                            '#48bb78',
+                            '#ed8936',
+                            '#f56565',
+                            '#4299e1',
+                            '#9f7aea'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderNotificationChart(logs) {
+            const notificationCounts = {
+                '0': 0,
+                '1-2': 0,
+                '3-4': 0,
+                '5+': 0
+            };
+
+            logs.forEach(log => {
+                const count = log.total_notifications_sent;
+                if (count === 0) notificationCounts['0']++;
+                else if (count <= 2) notificationCounts['1-2']++;
+                else if (count <= 4) notificationCounts['3-4']++;
+                else notificationCounts['5+']++;
+            });
+
+            const ctx = document.getElementById('notificationChart');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(notificationCounts),
+                    datasets: [{
+                        label: 'Number of Tasks',
+                        data: Object.values(notificationCounts),
+                        backgroundColor: '#667eea'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderTimelineChart(logs) {
+            // Group by date
+            const dateGroups = logs.reduce((acc, log) => {
+                const date = new Date(log.completed_at).toLocaleDateString();
+                if (!acc[date]) {
+                    acc[date] = { onTime: 0, overdue: 0 };
+                }
+                if (log.was_overdue) {
+                    acc[date].overdue++;
+                } else {
+                    acc[date].onTime++;
+                }
+                return acc;
+            }, {});
+
+            const dates = Object.keys(dateGroups).sort();
+            const onTimeData = dates.map(date => dateGroups[date].onTime);
+            const overdueData = dates.map(date => dateGroups[date].overdue);
+
+            const ctx = document.getElementById('timelineChart');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: dates,
+                    datasets: [
+                        {
+                            label: 'On Time',
+                            data: onTimeData,
+                            borderColor: '#48bb78',
+                            backgroundColor: 'rgba(72, 187, 120, 0.1)',
+                            tension: 0.4
+                        },
+                        {
+                            label: 'Overdue',
+                            data: overdueData,
+                            borderColor: '#f56565',
+                            backgroundColor: 'rgba(245, 101, 101, 0.1)',
+                            tension: 0.4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Load dashboard on page load
+        loadDashboard();
+
+        // Auto-refresh every 5 minutes
+        setInterval(loadDashboard, 300000);
+    </script>
+</body>
+</html>
