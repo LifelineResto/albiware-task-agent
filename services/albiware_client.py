@@ -25,7 +25,7 @@ class AlbiwareClient:
         self.api_key = api_key
         self.base_url = base_url
         self.headers = {
-            "ApiKey": api_key,
+            "apikey": api_key,
             "accept": "application/json"
         }
     
