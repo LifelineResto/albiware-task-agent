@@ -51,7 +51,8 @@ class AlbiwareClient:
         try:
             response = requests.get(url, headers=self.headers, params=params)
             response.raise_for_status()
-            data = response.json()
+            response_data = response.json()
+            data = response_data.get('data', [])
             logger.info(f"Retrieved {len(data)} projects from Albiware")
             return data
         except requests.exceptions.RequestException as e:
@@ -102,7 +103,8 @@ class AlbiwareClient:
         try:
             response = requests.get(url, headers=self.headers, params=params)
             response.raise_for_status()
-            data = response.json()
+            response_data = response.json()
+            data = response_data.get('data', [])
             logger.info(f"Retrieved {len(data)} tasks from Albiware")
             return data
         except requests.exceptions.RequestException as e:
