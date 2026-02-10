@@ -89,7 +89,8 @@ class SystemLog(Base):
     event_type = Column(String(100), nullable=False)  # 'polling', 'notification', 'error', 'system'
     message = Column(Text, nullable=False)
     severity = Column(String(20), nullable=False)  # 'info', 'warning', 'error', 'critical'
-    metadata = Column(Text, nullable=True)  # JSON string for additional data
+    meta_data = Column(Text, nullable=True)  # JSON string for additional data
+
     created_at = Column(DateTime, default=datetime.utcnow)
     
     def __repr__(self):

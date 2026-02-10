@@ -347,7 +347,7 @@ class NotificationEngine:
         event_type: str,
         message: str,
         severity: str,
-        metadata: Optional[str] = None
+        meta_data: Optional[str] = None
     ):
         """
         Log a system event.
@@ -357,14 +357,14 @@ class NotificationEngine:
             event_type: Type of event
             message: Event message
             severity: Event severity
-            metadata: Optional metadata JSON string
+            meta_data: Optional metadata JSON string
         """
         try:
             system_log = SystemLog(
                 event_type=event_type,
                 message=message,
                 severity=severity,
-                metadata=metadata
+                meta_data=meta_data
             )
             db.add(system_log)
             db.commit()
