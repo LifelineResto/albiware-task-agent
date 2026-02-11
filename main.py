@@ -268,6 +268,73 @@ async def twilio_sms_webhook(request: Request, db: Session = Depends(get_db)):
 
 # ===== API ENDPOINTS =====
 
+@app.post("/api/test/send-followup")
+async def test_send_followup(
+    contact_name: str,
+    contact_phone: str,
+    db: Session = Depends(get_db)
+):
+    """
+    TEST ENDPOINT: Manually trigger a 24-hour follow-up SMS
+    This creates a conversation and sends the initial follow-up message
+    """
+    try:
+        # Create or get test contact
+        contact = db.query(Contact).filter(Contact.phone_number == contact_phone).first()
+        
+        if not contact:
+            contact = Contact(
+                albiware_contact_id="TEST-" + contact_phone,
+                full_name=contact_name,
+                phone_number=contact_phone,
+                email=None,
+                status=ContactStatus.PENDING_FOLLOW_UP,
+                created_at=datetime.utcnow()
+            )
+            db.add(contact)
+            db.flush()
+        
+        # Create conversation
+        conversation = SMSConversation(
+            contact_id=contact.id,
+            technician_phone=settings.technician_phone_number,
+            state=ConversationState.AWAITING_CONTACT_CONFIRMATION,
+            started_at=datetime.utcnow(),
+            last_message_at=datetime.utcnow()
+        )
+        db.add(conversation)
+        db.flush()
+        
+        # Send follow-up message
+        message = f"Hi Rudy, were you able to make contact with {contact_name} yet? Reply YES or NO."
+        
+        success = sms_service.send_sms(
+            to_number=settings.technician_phone_number,
+            message=message,
+            contact_id=contact.id,
+            conversation_id=conversation.id,
+            db=db
+        )
+        
+        if success:
+            contact.follow_up_sent_at = datetime.utcnow()
+            contact.status = ContactStatus.FOLLOW_UP_SENT
+            db.commit()
+            
+            return {
+                "success": True,
+                "message": "Test follow-up sent",
+                "contact_id": contact.id,
+                "conversation_id": conversation.id
+            }
+        else:
+            return {"success": False, "message": "Failed to send SMS"}
+            
+    except Exception as e:
+        logger.error(f"Error in test endpoint: {e}")
+        return {"success": False, "message": str(e)}
+
+
 @app.get("/api/contacts")
 async def get_contacts(
     status: str = None,
