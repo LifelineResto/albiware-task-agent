@@ -33,9 +33,16 @@ class Settings(BaseSettings):
     # Staff Phone Numbers (comma-separated)
     staff_phone_numbers: str = ""
     
+    # Technician Phone Number for contact follow-ups
+    technician_phone_number: str = ""
+    
+    # Albiware Login Credentials (for browser automation)
+    albiware_email: str = ""
+    albiware_password: str = ""
+    
     # Railway Configuration
     railway_token: Optional[str] = None
-    port: int = 8000
+    port: int = 8080
     
     class Config:
         env_file_encoding = 'utf-8'

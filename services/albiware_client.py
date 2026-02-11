@@ -170,3 +170,31 @@ class AlbiwareClient:
         except requests.exceptions.RequestException as e:
             logger.error(f"Error retrieving staff for project {project_id}: {e}")
             return []
+    
+    def get_all_contacts(self, page: int = 1, page_size: int = 100) -> List[Dict]:
+        """
+        Retrieve all contacts from Albiware.
+        
+        Args:
+            page: Page number for pagination
+            page_size: Number of results per page
+            
+        Returns:
+            List of contact dictionaries
+        """
+        url = f"{self.base_url}/Integrations/Contacts"
+        params = {
+            "page": page,
+            "pageSize": page_size
+        }
+        
+        try:
+            response = requests.get(url, headers=self.headers, params=params)
+            response.raise_for_status()
+            response_data = response.json()
+            data = response_data.get('data', [])
+            logger.info(f"Retrieved {len(data)} contacts from Albiware")
+            return data
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Error retrieving contacts from Albiware: {e}")
+            return []

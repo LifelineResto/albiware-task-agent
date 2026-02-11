@@ -7,6 +7,7 @@ from twilio.rest import Client
 from typing import Optional
 import logging
 from datetime import datetime
+from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +26,7 @@ class SMSService:
         """
         self.client = Client(account_sid, auth_token)
         self.from_number = from_number
+        self.twilio_phone = from_number
     
     def send_task_reminder(
         self,
@@ -152,3 +154,55 @@ class SMSService:
         except Exception as e:
             logger.error(f"Error fetching message status for {message_sid}: {e}")
             return None
+    
+    def send_sms(self, to_number: str, message: str, contact_id: Optional[int], 
+                 conversation_id: Optional[int], db: Session) -> bool:
+        """
+        Send SMS and log to database
+        
+        Args:
+            to_number: Recipient phone number
+            message: Message content
+            contact_id: Contact ID (optional)
+            conversation_id: Conversation ID (optional)
+            db: Database session
+            
+        Returns:
+            True if sent successfully
+        """
+        try:
+            # Send via Twilio
+            twilio_message = self.client.messages.create(
+                body=message,
+                from_=self.from_number,
+                to=to_number
+            )
+            
+            logger.info(f"SMS sent to {to_number}. SID: {twilio_message.sid}")
+            
+            # Log to database if we have the models imported
+            if contact_id and conversation_id:
+                try:
+                    from database.enhanced_models import SMSMessage
+                    
+                    sms_log = SMSMessage(
+                        conversation_id=conversation_id,
+                        contact_id=contact_id,
+                        direction='outbound',
+                        from_number=self.from_number,
+                        to_number=to_number,
+                        message_body=message,
+                        twilio_sid=twilio_message.sid,
+                        twilio_status=twilio_message.status,
+                        sent_at=datetime.utcnow()
+                    )
+                    db.add(sms_log)
+                    db.flush()
+                except Exception as e:
+                    logger.warning(f"Could not log SMS to database: {e}")
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error sending SMS to {to_number}: {e}")
+            return False

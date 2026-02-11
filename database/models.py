@@ -9,6 +9,12 @@ from datetime import datetime
 
 Base = declarative_base()
 
+# Import enhanced models to ensure they use the same Base
+try:
+    from database.enhanced_models import Contact, SMSConversation, SMSMessage, ProjectCreationLog
+except ImportError:
+    pass  # Enhanced models not yet available
+
 
 class Task(Base):
     """Model for tracking tasks from Albiware."""
