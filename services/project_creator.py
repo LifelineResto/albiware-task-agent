@@ -160,16 +160,30 @@ class AlbiwareProjectCreator:
             logger.info("Navigating to project creation...")
             
             # Direct navigation to project creation URL (more reliable)
-            page.goto(f"{self.albiware_url}/Project/New", wait_until="networkidle", timeout=30000)
+            page.goto(f"{self.albiware_url}/Project/New", wait_until="networkidle", timeout=45000)
+            logger.info(f"Navigated to: {page.url}")
             
-            # Wait for form to load
-            page.wait_for_selector('#NewProjectForm', timeout=15000)
+            # Wait for form to load (try multiple selectors)
+            try:
+                page.wait_for_selector('#NewProjectForm', timeout=30000)
+                logger.info("Project creation form loaded (#NewProjectForm found)")
+            except:
+                # Try alternative - wait for any form element
+                logger.info("#NewProjectForm not found, checking for form elements...")
+                page.wait_for_selector('form', timeout=10000)
+                logger.info("Form element found")
             
-            logger.info("Project creation form loaded")
             return True
             
         except Exception as e:
             logger.error(f"Navigation error: {e}")
+            logger.error(f"Current URL: {page.url}")
+            # Take screenshot for debugging
+            try:
+                page.screenshot(path="/tmp/nav_error.png")
+                logger.error("Screenshot saved to /tmp/nav_error.png")
+            except:
+                pass
             return False
     
     def _fill_project_form(self, page: Page, contact: Contact) -> bool:
