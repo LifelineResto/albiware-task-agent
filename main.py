@@ -229,6 +229,15 @@ async def health_check():
     }
 
 
+@app.get("/74916c351bd2f695c708eccb66f5bb12.html")
+async def twilio_domain_verification():
+    """Twilio domain verification endpoint."""
+    return Response(
+        content="twilio-domain-verification=74916c351bd2f695c708eccb66f5bb12",
+        media_type="text/plain"
+    )
+
+
 @app.post("/webhooks/twilio/sms")
 async def twilio_sms_webhook(request: Request, db: Session = Depends(get_db)):
     """
