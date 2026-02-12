@@ -541,6 +541,38 @@ async def run_migration(db: Session = Depends(get_db)):
         }
 
 
+@app.post("/api/admin/trigger-project-creation")
+async def trigger_project_creation(db: Session = Depends(get_db)):
+    """
+    ADMIN ENDPOINT: Manually trigger project creation for pending contacts
+    """
+    try:
+        logger.info("Manual project creation trigger...")
+        
+        # Get the project creator instance
+        project_creator = AlbiwareProjectCreator(
+            albiware_url=settings.albiware_base_url,
+            email=settings.albiware_email,
+            password=settings.albiware_password
+        )
+        
+        # Process pending projects
+        projects_created = project_creator.process_pending_projects(db)
+        
+        return {
+            "success": True,
+            "message": f"Project creation completed",
+            "projects_created": projects_created
+        }
+        
+    except Exception as e:
+        logger.error(f"Manual trigger error: {e}")
+        return {
+            "success": False,
+            "message": f"Error: {str(e)}"
+        }
+
+
 @app.get("/api/analytics/summary")
 async def get_analytics_summary(db: Session = Depends(get_db)):
     """Get summary analytics for both tasks and contacts."""
