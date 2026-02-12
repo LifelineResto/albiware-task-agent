@@ -235,10 +235,30 @@ class AlbiwareProjectCreator:
                 time.sleep(1.5)  # Wait for search results
                 
                 # Step 4: Click the matching result
+                logger.info("Waiting for search results...")
+                time.sleep(1)  # Extra wait for results to load
+                
+                # Log all available options for debugging
+                try:
+                    options = page.locator('.select2-results__option').all_text_contents()
+                    logger.info(f"Available options: {options}")
+                except:
+                    pass
+                
                 logger.info("Clicking customer from results")
-                result_item = page.locator(f'.select2-results__option:has-text("{contact.full_name}")').first
-                result_item.wait_for(state='visible', timeout=5000)
-                result_item.click()
+                # Try multiple selector strategies
+                try:
+                    # Strategy 1: Exact text match, exclude "Choose One"
+                    result_item = page.locator(f'.select2-results__option:not([aria-disabled="true"]):has-text("{contact.full_name}")').first
+                    result_item.wait_for(state='visible', timeout=10000)
+                    result_item.click()
+                except:
+                    # Strategy 2: Contains text
+                    logger.info("Trying alternative selector...")
+                    result_item = page.locator(f'.select2-results__option').filter(has_text=contact.full_name).nth(0)
+                    result_item.wait_for(state='visible', timeout=10000)
+                    result_item.click()
+                
                 time.sleep(0.5)
                 logger.info("Customer selected successfully")
                 
