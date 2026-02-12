@@ -373,6 +373,7 @@ async def get_contacts(
                 "outcome": contact.outcome,
                 "created_at": contact.created_at.isoformat() if contact.created_at else None,
                 "follow_up_sent_at": contact.follow_up_sent_at.isoformat() if contact.follow_up_sent_at else None,
+                "project_creation_needed": contact.project_creation_needed,
                 "project_created": contact.project_created
             }
             for contact in contacts
