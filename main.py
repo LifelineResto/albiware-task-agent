@@ -16,7 +16,7 @@ import sys
 from config.settings import settings
 from database.database import Database
 from database.models import Task, Notification, TaskCompletionLog, SystemLog
-from database.enhanced_models import Contact, SMSConversation, SMSMessage, ProjectCreationLog, ProjectCreationAttempt, ContactStatus, ConversationState
+from database.enhanced_models import Contact, SMSConversation, SMSMessage, ProjectCreationLog, ContactStatus, ConversationState
 from services.albiware_client import AlbiwareClient
 from services.sms_service import SMSService
 from services.notification_engine import NotificationEngine
@@ -447,13 +447,13 @@ async def reset_database(db: Session = Depends(get_db)):
         contact_count = db.query(Contact).count()
         conversation_count = db.query(SMSConversation).count()
         message_count = db.query(SMSMessage).count()
-        project_attempt_count = db.query(ProjectCreationAttempt).count()
+        project_log_count = db.query(ProjectCreationLog).count()
         
         logger.info(f"Found {contact_count} contacts, {conversation_count} conversations, "
-                   f"{message_count} messages, {project_attempt_count} project attempts")
+                   f"{message_count} messages, {project_log_count} project creation logs")
         
         # Delete all records (in correct order due to foreign keys)
-        db.query(ProjectCreationAttempt).delete()
+        db.query(ProjectCreationLog).delete()
         db.query(SMSMessage).delete()
         db.query(SMSConversation).delete()
         db.query(Contact).delete()
@@ -469,7 +469,7 @@ async def reset_database(db: Session = Depends(get_db)):
                 "contacts": contact_count,
                 "conversations": conversation_count,
                 "messages": message_count,
-                "project_attempts": project_attempt_count
+                "project_logs": project_log_count
             },
             "note": "System will now only track contacts created after Feb 11, 2026"
         }
