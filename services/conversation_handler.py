@@ -425,10 +425,14 @@ class ConversationHandler:
                 to_number=conversation.technician_phone,
                 message=(
                     "How did they hear about us?\n"
-                    "1 - Google\n"
-                    "2 - Yelp\n"
-                    "3 - Referral\n"
-                    "4 - Other"
+                    "1 - Lead Gen\n"
+                    "2 - Customer Referral\n"
+                    "3 - Insurance Referral\n"
+                    "4 - Online Marketing\n"
+                    "5 - Agent\n"
+                    "6 - Industry Partner\n"
+                    "7 - Plumber\n"
+                    "8 - Vehicle Wraps"
                 ),
                 contact_id=contact.id,
                 conversation_id=conversation.id,
@@ -462,10 +466,14 @@ class ConversationHandler:
             to_number=conversation.technician_phone,
             message=(
                 "How did they hear about us?\n"
-                "1 - Google\n"
-                "2 - Yelp\n"
-                "3 - Referral\n"
-                "4 - Other"
+                "1 - Lead Gen\n"
+                "2 - Customer Referral\n"
+                "3 - Insurance Referral\n"
+                "4 - Online Marketing\n"
+                "5 - Agent\n"
+                "6 - Industry Partner\n"
+                "7 - Plumber\n"
+                "8 - Vehicle Wraps"
             ),
             contact_id=contact.id,
             conversation_id=conversation.id,
@@ -481,25 +489,41 @@ class ConversationHandler:
         contact = conversation.contact
         response = message_body.strip().lower()
         
-        # Map response to referral source
+        # Map response to referral source (Albiware values)
         referral_map = {
-            '1': 'Google',
-            '2': 'Yelp',
-            '3': 'Referral',
-            '4': 'Other'
+            '1': 'Lead Gen',
+            '2': 'Customer Referral',
+            '3': 'Insurance Referral',
+            '4': 'Online Marketing',
+            '5': 'Agent',
+            '6': 'Industry Partner',
+            '7': 'Plumber',
+            '8': 'Vehicle Wraps'
         }
         
-        if response in referral_map or any(keyword in response for keyword in ['google', 'yelp', 'referral', 'other']):
+        keywords = ['lead', 'customer', 'insurance', 'online', 'agent', 'industry', 'plumber', 'vehicle', 'wrap']
+        
+        if response in referral_map or any(keyword in response for keyword in keywords):
             if response in referral_map:
                 referral_source = referral_map[response]
-            elif 'google' in response:
-                referral_source = 'Google'
-            elif 'yelp' in response:
-                referral_source = 'Yelp'
-            elif 'referral' in response:
-                referral_source = 'Referral'
+            elif 'lead' in response:
+                referral_source = 'Lead Gen'
+            elif 'customer' in response:
+                referral_source = 'Customer Referral'
+            elif 'insurance' in response:
+                referral_source = 'Insurance Referral'
+            elif 'online' in response or 'marketing' in response:
+                referral_source = 'Online Marketing'
+            elif 'agent' in response:
+                referral_source = 'Agent'
+            elif 'industry' in response or 'partner' in response:
+                referral_source = 'Industry Partner'
+            elif 'plumber' in response:
+                referral_source = 'Plumber'
+            elif 'vehicle' in response or 'wrap' in response:
+                referral_source = 'Vehicle Wraps'
             else:
-                referral_source = 'Other'
+                referral_source = 'Lead Gen'  # Default
             
             contact.referral_source = referral_source
             
@@ -534,10 +558,14 @@ class ConversationHandler:
                 to_number=conversation.technician_phone,
                 message=(
                     "Please reply with:\n"
-                    "1 - Google\n"
-                    "2 - Yelp\n"
-                    "3 - Referral\n"
-                    "4 - Other"
+                    "1 - Lead Gen\n"
+                    "2 - Customer Referral\n"
+                    "3 - Insurance Referral\n"
+                    "4 - Online Marketing\n"
+                    "5 - Agent\n"
+                    "6 - Industry Partner\n"
+                    "7 - Plumber\n"
+                    "8 - Vehicle Wraps"
                 ),
                 contact_id=contact.id,
                 conversation_id=conversation.id,

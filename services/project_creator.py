@@ -232,10 +232,11 @@ class AlbiwareProjectCreator:
             insurance_value = "Yes" if contact.has_insurance else "No"
             select_dropdown("Insurance Info", insurance_value)
             
-            # 6. Referral Source
-            referral_map = {'Google': 'Lead Gen', 'Yelp': 'Lead Gen', 'Referral': 'Lead Gen', 'Other': 'Lead Gen'}
-            albiware_referral = referral_map.get(contact.referral_source, 'Lead Gen')
-            select_dropdown("Referral Source", albiware_referral)
+            # 6. Referral Source (already in Albiware format from SMS)
+            if contact.referral_source:
+                select_dropdown("Referral Source", contact.referral_source)
+            else:
+                select_dropdown("Referral Source", "Lead Gen")  # Default
             
             # 7. Assigned Staff
             select_dropdown("Staff", "Rodolfo Arceo")
