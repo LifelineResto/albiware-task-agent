@@ -283,8 +283,10 @@ async def test_send_followup(
         contact = db.query(Contact).filter(Contact.phone_number == contact_phone).first()
         
         if not contact:
+            # Use a numeric test ID (999000000 + last 4 digits of phone)
+            test_id = 999000000 + int(contact_phone[-4:])
             contact = Contact(
-                albiware_contact_id="TEST-" + contact_phone,
+                albiware_contact_id=test_id,
                 full_name=contact_name,
                 phone_number=contact_phone,
                 email=None,
