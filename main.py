@@ -572,6 +572,51 @@ async def trigger_project_creation(db: Session = Depends(get_db)):
         }
 
 
+@app.get("/api/admin/debug-query")
+async def debug_query(db: Session = Depends(get_db)):
+    """
+    DEBUG ENDPOINT: Show what the project creation query returns
+    """
+    try:
+        from database.enhanced_models import Contact
+        
+        # Get all contacts
+        all_contacts = db.query(Contact).all()
+        
+        # Get contacts needing project creation
+        pending = db.query(Contact).filter(
+            Contact.project_creation_needed == True,
+            Contact.project_created == False
+        ).all()
+        
+        return {
+            "total_contacts": len(all_contacts),
+            "pending_project_creation": len(pending),
+            "pending_details": [
+                {
+                    "id": c.id,
+                    "name": c.full_name,
+                    "project_creation_needed": c.project_creation_needed,
+                    "project_created": c.project_created,
+                    "project_type": c.project_type,
+                    "property_type": c.property_type
+                }
+                for c in pending
+            ],
+            "all_contacts_summary": [
+                {
+                    "id": c.id,
+                    "name": c.full_name,
+                    "project_creation_needed": c.project_creation_needed,
+                    "project_created": c.project_created
+                }
+                for c in all_contacts
+            ]
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+
 @app.get("/api/analytics/summary")
 async def get_analytics_summary(db: Session = Depends(get_db)):
     """Get summary analytics for both tasks and contacts."""
