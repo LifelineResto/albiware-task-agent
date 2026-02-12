@@ -351,10 +351,18 @@ class AlbiwareProjectCreator:
         """
         try:
             # Find contacts that need project creation
+            logger.info("Querying for contacts needing project creation...")
+            all_contacts = db.query(Contact).all()
+            logger.info(f"Total contacts in database: {len(all_contacts)}")
+            
             contacts = db.query(Contact).filter(
                 Contact.project_creation_needed == True,
                 Contact.project_created == False
             ).all()
+            
+            logger.info(f"Contacts with project_creation_needed=True: {len(contacts)}")
+            for c in contacts:
+                logger.info(f"  - Contact {c.id}: {c.full_name}, project_created={c.project_created}")
             
             if not contacts:
                 logger.info("No pending project creations")
