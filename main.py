@@ -551,9 +551,8 @@ async def trigger_project_creation(db: Session = Depends(get_db)):
         
         # Get the project creator instance
         project_creator = AlbiwareProjectCreator(
-            albiware_url=settings.albiware_base_url,
-            email=settings.albiware_email,
-            password=settings.albiware_password
+            albiware_email=settings.albiware_email,
+            albiware_password=settings.albiware_password
         )
         
         # Process pending projects
