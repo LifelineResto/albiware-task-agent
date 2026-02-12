@@ -10,7 +10,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from sqlalchemy import create_engine, text
-from database.models import get_database_url
+import os
 import logging
 
 logging.basicConfig(level=logging.INFO)
@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 def run_migration():
     """Add project detail columns to contacts table"""
     
-    database_url = get_database_url()
+    database_url = os.getenv("DATABASE_URL", "postgresql://user:password@localhost:5432/albiware_tracking")
     engine = create_engine(database_url)
     
     migrations = [

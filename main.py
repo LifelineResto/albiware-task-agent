@@ -493,6 +493,49 @@ async def reset_database(db: Session = Depends(get_db)):
         }
 
 
+@app.post("/api/admin/run-migration")
+async def run_migration(db: Session = Depends(get_db)):
+    """
+    ADMIN ENDPOINT: Run database migration to add project detail fields
+    Adds: project_type, property_type, has_insurance, insurance_company, referral_source
+    """
+    try:
+        logger.info("Running database migration...")
+        
+        from sqlalchemy import text
+        
+        migrations = [
+            "ALTER TABLE contacts ADD COLUMN IF NOT EXISTS project_type VARCHAR(100)",
+            "ALTER TABLE contacts ADD COLUMN IF NOT EXISTS property_type VARCHAR(50)",
+            "ALTER TABLE contacts ADD COLUMN IF NOT EXISTS has_insurance BOOLEAN",
+            "ALTER TABLE contacts ADD COLUMN IF NOT EXISTS insurance_company VARCHAR(200)",
+            "ALTER TABLE contacts ADD COLUMN IF NOT EXISTS referral_source VARCHAR(100)",
+        ]
+        
+        for migration_sql in migrations:
+            logger.info(f"Running: {migration_sql}")
+            db.execute(text(migration_sql))
+        
+        db.commit()
+        
+        logger.info("✅ Migration completed successfully!")
+        
+        return {
+            "success": True,
+            "message": "Database migration completed",
+            "migrations_run": len(migrations),
+            "fields_added": ["project_type", "property_type", "has_insurance", "insurance_company", "referral_source"]
+        }
+        
+    except Exception as e:
+        logger.error(f"Migration error: {e}")
+        db.rollback()
+        return {
+            "success": False,
+            "message": f"Migration failed: {str(e)}"
+        }
+
+
 @app.get("/api/analytics/summary")
 async def get_analytics_summary(db: Session = Depends(get_db)):
     """Get summary analytics for both tasks and contacts."""
