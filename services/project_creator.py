@@ -141,8 +141,8 @@ class AlbiwareProjectCreator:
             page.click('#btn-login')
             logger.info("Clicked login button")
             
-            # Wait for navigation with longer timeout
-            page.wait_for_url("**/dashboard", timeout=60000)
+            # Wait for navigation to complete (Albiware redirects to TaskDashboard)
+            page.wait_for_load_state("networkidle", timeout=10000)
             
             logger.info("Successfully logged in to Albiware")
             return True
