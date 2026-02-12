@@ -35,6 +35,11 @@ class ConversationState(str, enum.Enum):
     INITIAL = "initial"
     AWAITING_CONTACT_CONFIRMATION = "awaiting_contact_confirmation"
     AWAITING_OUTCOME = "awaiting_outcome"
+    AWAITING_PROJECT_TYPE = "awaiting_project_type"
+    AWAITING_PROPERTY_TYPE = "awaiting_property_type"
+    AWAITING_INSURANCE = "awaiting_insurance"
+    AWAITING_INSURANCE_COMPANY = "awaiting_insurance_company"
+    AWAITING_REFERRAL_SOURCE = "awaiting_referral_source"
     COMPLETED = "completed"
 
 
@@ -73,6 +78,13 @@ class Contact(Base):
     project_created = Column(Boolean, default=False)
     albiware_project_id = Column(Integer, nullable=True)
     project_created_at = Column(DateTime, nullable=True)
+    
+    # Project Details (collected from SMS)
+    project_type = Column(String(100), nullable=True)  # Water, Fire, Mold, Other
+    property_type = Column(String(50), nullable=True)  # Residential, Commercial
+    has_insurance = Column(Boolean, nullable=True)
+    insurance_company = Column(String(200), nullable=True)
+    referral_source = Column(String(100), nullable=True)  # Google, Yelp, Referral, Other
     
     # Relationships
     conversations = relationship("SMSConversation", back_populates="contact")

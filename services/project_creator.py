@@ -159,15 +159,11 @@ class AlbiwareProjectCreator:
         try:
             logger.info("Navigating to project creation...")
             
-            # Click on Projects menu
-            page.click('text=Projects')
-            time.sleep(1)
-            
-            # Click Create New Project button
-            page.click('button:has-text("Create New")')
+            # Direct navigation to project creation URL (more reliable)
+            page.goto(f"{self.albiware_url}/Project/New", wait_until="networkidle", timeout=30000)
             
             # Wait for form to load
-            page.wait_for_selector('form', timeout=10000)
+            page.wait_for_selector('#NewProjectForm', timeout=15000)
             
             logger.info("Project creation form loaded")
             return True
@@ -177,38 +173,94 @@ class AlbiwareProjectCreator:
             return False
     
     def _fill_project_form(self, page: Page, contact: Contact) -> bool:
-        """Fill out the project creation form"""
+        """Fill out the project creation form with collected details"""
         try:
             logger.info(f"Filling project form for {contact.full_name}...")
             
-            # Customer name
-            if contact.full_name:
-                page.fill('input[name="customerName"]', contact.full_name)
+            # Helper function for Kendo dropdowns
+            def select_dropdown(label_text: str, value_text: str) -> bool:
+                try:
+                    # Scroll label into view
+                    page.locator(f'label:has-text("{label_text}")').scroll_into_view_if_needed()
+                    time.sleep(0.3)
+                    
+                    # Click dropdown to open
+                    page.locator(f'label:has-text("{label_text}")').locator('..').locator('span[role="listbox"], span[role="combobox"]').first.click()
+                    time.sleep(0.5)
+                    
+                    # Select option
+                    page.locator(f'li:has-text("{value_text}")').first.click(timeout=5000)
+                    time.sleep(0.3)
+                    
+                    logger.info(f"Selected {label_text}: {value_text}")
+                    return True
+                except Exception as e:
+                    logger.warning(f"Could not select {label_text}: {e}")
+                    return False
             
-            # Phone number
-            if contact.phone_number:
-                page.fill('input[name="phoneNumber"]', contact.phone_number)
-            
-            # Email
-            if contact.email:
-                page.fill('input[name="email"]', contact.email)
-            
-            # Address (if available)
-            if contact.address:
-                page.fill('input[name="address"]', contact.address)
-            
-            # Project type - set to "Restoration" or similar default
+            # 1. Customer - Search and select
+            logger.info(f"Selecting customer: {contact.full_name}")
             try:
-                page.select_option('select[name="projectType"]', label="Restoration")
-            except:
-                logger.warning("Could not set project type")
+                customer_input = page.locator('input[role="searchbox"]').first
+                customer_input.click()
+                customer_input.fill(contact.full_name)
+                time.sleep(1)
+                page.locator(f'li:has-text("{contact.full_name}")').first.click()
+                time.sleep(0.5)
+            except Exception as e:
+                logger.error(f"Failed to select customer: {e}")
+                return False
             
-            # Notes - add context about automated creation
-            notes = f"Project created automatically via AI agent. Contact outcome: Appointment Set. Created: {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}"
+            # 2. Project Type
+            project_type_map = {
+                'Water Damage': 'Emergency Mitigation Services (EMS)',
+                'Fire Damage': 'Emergency Mitigation Services (EMS)',
+                'Mold': 'Emergency Mitigation Services (EMS)',
+                'Other': 'Emergency Mitigation Services (EMS)'
+            }
+            albiware_project_type = project_type_map.get(contact.project_type, 'Emergency Mitigation Services (EMS)')
+            select_dropdown("Project Type", albiware_project_type)
+            
+            # 3. Property Type
+            if contact.property_type:
+                select_dropdown("Property Type", contact.property_type)
+            
+            # 4. Location
+            select_dropdown("Location", "Main Office")
+            
+            # 5. Insurance
+            insurance_value = "Yes" if contact.has_insurance else "No"
+            select_dropdown("Insurance Info", insurance_value)
+            
+            # 6. Referral Source
+            referral_map = {'Google': 'Lead Gen', 'Yelp': 'Lead Gen', 'Referral': 'Lead Gen', 'Other': 'Lead Gen'}
+            albiware_referral = referral_map.get(contact.referral_source, 'Lead Gen')
+            select_dropdown("Referral Source", albiware_referral)
+            
+            # 7. Assigned Staff
+            select_dropdown("Staff", "Rodolfo Arceo")
+            
+            # 8. Project Roles
             try:
-                page.fill('textarea[name="notes"]', notes)
-            except:
-                logger.warning("Could not add notes")
+                page.locator('option:has-text("Estimator")').click()
+                logger.info("Selected role: Estimator")
+            except Exception as e:
+                logger.warning(f"Could not select Estimator: {e}")
+            
+            # 9. Internal Details
+            try:
+                notes = (
+                    f"AUTO-CREATED via AI Agent\\n"
+                    f"Outcome: Appointment Set\\n"
+                    f"Type: {contact.project_type}\\n"
+                    f"Property: {contact.property_type}\\n"
+                    f"Insurance: {'Yes - ' + (contact.insurance_company or 'Unknown') if contact.has_insurance else 'No'}\\n"
+                    f"Source: {contact.referral_source}\\n"
+                    f"Created: {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}"
+                )
+                page.fill('textarea#Sandbox', notes)
+            except Exception as e:
+                logger.warning(f"Could not add notes: {e}")
             
             logger.info("Project form filled successfully")
             return True
@@ -222,33 +274,33 @@ class AlbiwareProjectCreator:
         try:
             logger.info("Submitting project form...")
             
-            # Click submit/save button
-            page.click('button:has-text("Save"), button:has-text("Create")')
+            # Click Create button
+            page.click('input#SubmitButton')
             
-            # Wait for success indication or redirect
-            time.sleep(3)
+            # Wait for redirect to project detail page
+            page.wait_for_url("**/Project/*", timeout=30000)
             
-            # Try to extract project ID from URL or page
             current_url = page.url
+            logger.info(f"Project created, redirected to: {current_url}")
             
-            # Albiware typically redirects to /projects/{id} after creation
-            if '/projects/' in current_url:
-                project_id_str = current_url.split('/projects/')[-1].split('/')[0].split('?')[0]
+            # Extract project ID from URL
+            # Format: https://app.albiware.com/Project/1617650?tab=BasicInfo
+            if '/Project/' in current_url:
                 try:
+                    project_id_str = current_url.split('/Project/')[-1].split('?')[0].split('#')[0]
                     project_id = int(project_id_str)
-                    logger.info(f"Project created with ID: {project_id}")
+                    logger.info(f"✅ Project created successfully with ID: {project_id}")
                     return project_id
-                except:
-                    pass
+                except (ValueError, IndexError) as e:
+                    logger.error(f"Could not parse project ID: {e}")
+                    return None
             
-            # Alternative: look for success message
-            if page.locator('text=successfully created').count() > 0:
-                logger.info("Project created successfully (no ID extracted)")
-                return -1  # Indicate success but no ID
-            
-            logger.warning("Could not verify project creation")
+            logger.warning("Could not extract project ID from URL")
             return None
             
+        except PlaywrightTimeout:
+            logger.error("Timeout waiting for project creation redirect")
+            return None
         except Exception as e:
             logger.error(f"Submit/verify error: {e}")
             return None

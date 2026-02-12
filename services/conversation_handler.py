@@ -68,6 +68,21 @@ class ConversationHandler:
             elif conversation.state == ConversationState.AWAITING_OUTCOME:
                 return self._handle_outcome_response(db, conversation, message_body)
             
+            elif conversation.state == ConversationState.AWAITING_PROJECT_TYPE:
+                return self._handle_project_type(db, conversation, message_body)
+            
+            elif conversation.state == ConversationState.AWAITING_PROPERTY_TYPE:
+                return self._handle_property_type(db, conversation, message_body)
+            
+            elif conversation.state == ConversationState.AWAITING_INSURANCE:
+                return self._handle_insurance(db, conversation, message_body)
+            
+            elif conversation.state == ConversationState.AWAITING_INSURANCE_COMPANY:
+                return self._handle_insurance_company(db, conversation, message_body)
+            
+            elif conversation.state == ConversationState.AWAITING_REFERRAL_SOURCE:
+                return self._handle_referral_source(db, conversation, message_body)
+            
             else:
                 logger.warning(f"Unknown conversation state: {conversation.state}")
                 return False
@@ -159,28 +174,42 @@ class ConversationHandler:
             
             conversation.outcome = outcome
             conversation.outcome_details = message_body
-            conversation.state = ConversationState.COMPLETED
-            conversation.completed_at = datetime.utcnow()
             
             contact.outcome = outcome
             contact.outcome_received_at = datetime.utcnow()
-            contact.status = ContactStatus.COMPLETED
-            contact.completed_at = datetime.utcnow()
             
             # Check if project creation is needed
             if outcome == ContactOutcome.APPOINTMENT_SET:
                 contact.project_creation_needed = True
                 logger.info(f"Project creation needed for {contact.full_name}")
                 
-                # Send confirmation
+                # Start collecting project details
+                conversation.state = ConversationState.AWAITING_PROJECT_TYPE
+                conversation.completed_at = None  # Reset completion
+                contact.status = ContactStatus.AWAITING_RESPONSE
+                
+                # Ask for project type
                 self.sms_service.send_sms(
                     to_number=conversation.technician_phone,
-                    message=f"Perfect! I'll create a project in Albiware for {contact.full_name}. You'll get a confirmation once it's done.",
+                    message=(
+                        f"Great! I need a few details to create the project for {contact.full_name}.\n\n"
+                        "What type of project?\n"
+                        "1 - Water Damage\n"
+                        "2 - Fire Damage\n"
+                        "3 - Mold\n"
+                        "4 - Other"
+                    ),
                     contact_id=contact.id,
                     conversation_id=conversation.id,
                     db=db
                 )
             else:
+                # Complete conversation for non-appointment outcomes
+                conversation.state = ConversationState.COMPLETED
+                conversation.completed_at = datetime.utcnow()
+                contact.status = ContactStatus.COMPLETED
+                contact.completed_at = datetime.utcnow()
+                
                 # Send acknowledgment
                 self.sms_service.send_sms(
                     to_number=conversation.technician_phone,
@@ -265,3 +294,253 @@ class ConversationHandler:
         
         db.add(message)
         db.flush()
+
+    def _handle_project_type(self, db: Session, conversation: SMSConversation, message_body: str) -> bool:
+        """Handle project type response"""
+        contact = conversation.contact
+        response = message_body.strip().lower()
+        
+        # Map response to project type
+        project_type_map = {
+            '1': 'Water Damage',
+            '2': 'Fire Damage',
+            '3': 'Mold',
+            '4': 'Other'
+        }
+        
+        # Check for valid response
+        if response in project_type_map or any(keyword in response for keyword in ['water', 'fire', 'mold', 'other']):
+            if response in project_type_map:
+                project_type = project_type_map[response]
+            elif 'water' in response:
+                project_type = 'Water Damage'
+            elif 'fire' in response:
+                project_type = 'Fire Damage'
+            elif 'mold' in response:
+                project_type = 'Mold'
+            else:
+                project_type = 'Other'
+            
+            contact.project_type = project_type
+            conversation.state = ConversationState.AWAITING_PROPERTY_TYPE
+            
+            # Ask for property type
+            self.sms_service.send_sms(
+                to_number=conversation.technician_phone,
+                message=(
+                    "What type of property?\n"
+                    "1 - Residential\n"
+                    "2 - Commercial"
+                ),
+                contact_id=contact.id,
+                conversation_id=conversation.id,
+                db=db
+            )
+            
+            conversation.last_message_at = datetime.utcnow()
+            db.commit()
+            return True
+        else:
+            # Invalid response
+            self.sms_service.send_sms(
+                to_number=conversation.technician_phone,
+                message=(
+                    "Please reply with:\n"
+                    "1 - Water Damage\n"
+                    "2 - Fire Damage\n"
+                    "3 - Mold\n"
+                    "4 - Other"
+                ),
+                contact_id=contact.id,
+                conversation_id=conversation.id,
+                db=db
+            )
+            return False
+    
+    def _handle_property_type(self, db: Session, conversation: SMSConversation, message_body: str) -> bool:
+        """Handle property type response"""
+        contact = conversation.contact
+        response = message_body.strip().lower()
+        
+        # Map response to property type
+        if response == '1' or 'residential' in response or 'home' in response or 'house' in response:
+            property_type = 'Residential'
+        elif response == '2' or 'commercial' in response or 'business' in response:
+            property_type = 'Commercial'
+        else:
+            # Invalid response
+            self.sms_service.send_sms(
+                to_number=conversation.technician_phone,
+                message=(
+                    "Please reply with:\n"
+                    "1 - Residential\n"
+                    "2 - Commercial"
+                ),
+                contact_id=contact.id,
+                conversation_id=conversation.id,
+                db=db
+            )
+            return False
+        
+        contact.property_type = property_type
+        conversation.state = ConversationState.AWAITING_INSURANCE
+        
+        # Ask about insurance
+        self.sms_service.send_sms(
+            to_number=conversation.technician_phone,
+            message="Do they have insurance? Reply YES or NO",
+            contact_id=contact.id,
+            conversation_id=conversation.id,
+            db=db
+        )
+        
+        conversation.last_message_at = datetime.utcnow()
+        db.commit()
+        return True
+    
+    def _handle_insurance(self, db: Session, conversation: SMSConversation, message_body: str) -> bool:
+        """Handle insurance response"""
+        contact = conversation.contact
+        response = message_body.strip().lower()
+        
+        if self._is_yes_response(response):
+            contact.has_insurance = True
+            conversation.state = ConversationState.AWAITING_INSURANCE_COMPANY
+            
+            # Ask for insurance company
+            self.sms_service.send_sms(
+                to_number=conversation.technician_phone,
+                message="What insurance company?",
+                contact_id=contact.id,
+                conversation_id=conversation.id,
+                db=db
+            )
+            
+        elif self._is_no_response(response):
+            contact.has_insurance = False
+            conversation.state = ConversationState.AWAITING_REFERRAL_SOURCE
+            
+            # Ask for referral source
+            self.sms_service.send_sms(
+                to_number=conversation.technician_phone,
+                message=(
+                    "How did they hear about us?\n"
+                    "1 - Google\n"
+                    "2 - Yelp\n"
+                    "3 - Referral\n"
+                    "4 - Other"
+                ),
+                contact_id=contact.id,
+                conversation_id=conversation.id,
+                db=db
+            )
+        else:
+            # Invalid response
+            self.sms_service.send_sms(
+                to_number=conversation.technician_phone,
+                message="Please reply YES or NO. Do they have insurance?",
+                contact_id=contact.id,
+                conversation_id=conversation.id,
+                db=db
+            )
+            return False
+        
+        conversation.last_message_at = datetime.utcnow()
+        db.commit()
+        return True
+    
+    def _handle_insurance_company(self, db: Session, conversation: SMSConversation, message_body: str) -> bool:
+        """Handle insurance company response"""
+        contact = conversation.contact
+        
+        # Store insurance company name
+        contact.insurance_company = message_body.strip()
+        conversation.state = ConversationState.AWAITING_REFERRAL_SOURCE
+        
+        # Ask for referral source
+        self.sms_service.send_sms(
+            to_number=conversation.technician_phone,
+            message=(
+                "How did they hear about us?\n"
+                "1 - Google\n"
+                "2 - Yelp\n"
+                "3 - Referral\n"
+                "4 - Other"
+            ),
+            contact_id=contact.id,
+            conversation_id=conversation.id,
+            db=db
+        )
+        
+        conversation.last_message_at = datetime.utcnow()
+        db.commit()
+        return True
+    
+    def _handle_referral_source(self, db: Session, conversation: SMSConversation, message_body: str) -> bool:
+        """Handle referral source response"""
+        contact = conversation.contact
+        response = message_body.strip().lower()
+        
+        # Map response to referral source
+        referral_map = {
+            '1': 'Google',
+            '2': 'Yelp',
+            '3': 'Referral',
+            '4': 'Other'
+        }
+        
+        if response in referral_map or any(keyword in response for keyword in ['google', 'yelp', 'referral', 'other']):
+            if response in referral_map:
+                referral_source = referral_map[response]
+            elif 'google' in response:
+                referral_source = 'Google'
+            elif 'yelp' in response:
+                referral_source = 'Yelp'
+            elif 'referral' in response:
+                referral_source = 'Referral'
+            else:
+                referral_source = 'Other'
+            
+            contact.referral_source = referral_source
+            
+            # Mark conversation as completed
+            conversation.state = ConversationState.COMPLETED
+            conversation.completed_at = datetime.utcnow()
+            contact.status = ContactStatus.COMPLETED
+            contact.completed_at = datetime.utcnow()
+            
+            # Send confirmation
+            self.sms_service.send_sms(
+                to_number=conversation.technician_phone,
+                message=(
+                    f"Perfect! I have all the details for {contact.full_name}:\n"
+                    f"• Project: {contact.project_type}\n"
+                    f"• Property: {contact.property_type}\n"
+                    f"• Insurance: {'Yes - ' + contact.insurance_company if contact.has_insurance else 'No'}\n"
+                    f"• Source: {contact.referral_source}\n\n"
+                    "I'll create the project in Albiware now. You'll get a confirmation once it's done!"
+                ),
+                contact_id=contact.id,
+                conversation_id=conversation.id,
+                db=db
+            )
+            
+            conversation.last_message_at = datetime.utcnow()
+            db.commit()
+            return True
+        else:
+            # Invalid response
+            self.sms_service.send_sms(
+                to_number=conversation.technician_phone,
+                message=(
+                    "Please reply with:\n"
+                    "1 - Google\n"
+                    "2 - Yelp\n"
+                    "3 - Referral\n"
+                    "4 - Other"
+                ),
+                contact_id=contact.id,
+                conversation_id=conversation.id,
+                db=db
+            )
+            return False
