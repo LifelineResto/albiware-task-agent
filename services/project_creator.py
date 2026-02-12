@@ -127,18 +127,18 @@ class AlbiwareProjectCreator:
             logger.info(f"Loaded login page: {page.url}")
             
             # Wait for login form to be visible
-            page.wait_for_selector('input[type="email"]', timeout=30000)
+            page.wait_for_selector('#Email', timeout=30000)
             logger.info("Login form found")
             
             # Fill login form
-            page.fill('input[type="email"]', self.email)
+            page.fill('#Email', self.email)
             logger.info(f"Filled email: {self.email}")
             
-            page.fill('input[type="password"]', self.password)
+            page.fill('#password', self.password)
             logger.info("Filled password")
             
             # Click login button
-            page.click('button[type="submit"]')
+            page.click('#btn-login')
             logger.info("Clicked login button")
             
             # Wait for navigation with longer timeout
