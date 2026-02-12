@@ -123,17 +123,26 @@ class AlbiwareProjectCreator:
         """Login to Albiware"""
         try:
             logger.info("Logging into Albiware...")
-            page.goto(f"{self.albiware_url}/login", wait_until="networkidle")
+            page.goto(f"{self.albiware_url}/login", wait_until="domcontentloaded", timeout=60000)
+            logger.info(f"Loaded login page: {page.url}")
+            
+            # Wait for login form to be visible
+            page.wait_for_selector('input[type="email"]', timeout=30000)
+            logger.info("Login form found")
             
             # Fill login form
             page.fill('input[type="email"]', self.email)
+            logger.info(f"Filled email: {self.email}")
+            
             page.fill('input[type="password"]', self.password)
+            logger.info("Filled password")
             
             # Click login button
             page.click('button[type="submit"]')
+            logger.info("Clicked login button")
             
-            # Wait for navigation
-            page.wait_for_url("**/dashboard", timeout=15000)
+            # Wait for navigation with longer timeout
+            page.wait_for_url("**/dashboard", timeout=60000)
             
             logger.info("Successfully logged in to Albiware")
             return True
