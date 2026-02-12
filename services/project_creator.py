@@ -226,20 +226,27 @@ class AlbiwareProjectCreator:
                 """)
                 time.sleep(1)  # Wait for customer field to appear
                 
-                # Step 2: Find and interact with the customer Select2 field
+                # Step 2: Click on the Select2 container to open dropdown
                 logger.info("Opening customer Select2 dropdown")
-                page.evaluate("""
-                    const customerSelect = document.querySelector('select[name="ProjectCustomer.ExistingOrganizationContactIds"]');
-                    if (customerSelect && window.jQuery) {
-                        // Initialize Select2 if not already done
-                        if (!jQuery(customerSelect).data('select2')) {
-                            jQuery(customerSelect).select2();
+                try:
+                    # Find the Select2 container span and click it
+                    select2_container = page.locator('.select2-selection').first
+                    select2_container.wait_for(state='visible', timeout=5000)
+                    logger.info("Found Select2 container, clicking to open...")
+                    select2_container.click()
+                    time.sleep(1.5)  # Wait for dropdown to fully open
+                    logger.info("Clicked Select2 container")
+                except Exception as e:
+                    logger.error(f"Failed to click Select2 container: {e}")
+                    # Fallback: try jQuery method
+                    logger.info("Trying jQuery fallback...")
+                    page.evaluate("""
+                        const customerSelect = document.querySelector('select[name="ProjectCustomer.ExistingOrganizationContactIds"]');
+                        if (customerSelect && window.jQuery) {
+                            jQuery(customerSelect).select2('open');
                         }
-                        // Open the dropdown
-                        jQuery(customerSelect).select2('open');
-                    }
-                """)
-                time.sleep(1)  # Wait for dropdown to fully open
+                    """)
+                    time.sleep(1)
                 
                 # Step 3: Type customer name in the search box
                 logger.info(f"Typing customer name: {contact.full_name}")
