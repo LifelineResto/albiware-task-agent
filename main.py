@@ -16,7 +16,7 @@ import sys
 from config.settings import settings
 from database.database import Database
 from database.models import Task, Notification, TaskCompletionLog, SystemLog
-from database.enhanced_models import Contact, SMSConversation, SMSMessage, ProjectCreationLog
+from database.enhanced_models import Contact, SMSConversation, SMSMessage, ProjectCreationLog, ContactStatus, ConversationState
 from services.albiware_client import AlbiwareClient
 from services.sms_service import SMSService
 from services.notification_engine import NotificationEngine
