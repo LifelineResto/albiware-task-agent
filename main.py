@@ -16,7 +16,7 @@ import sys
 from config.settings import settings
 from database.database import Database
 from database.models import Task, Notification, TaskCompletionLog, SystemLog
-from database.enhanced_models import Contact, SMSConversation, SMSMessage, ProjectCreationLog, ContactStatus, ConversationState
+from database.enhanced_models import Contact, SMSConversation, SMSMessage, ProjectCreationLog, ProjectCreationAttempt, ContactStatus, ConversationState
 from services.albiware_client import AlbiwareClient
 from services.sms_service import SMSService
 from services.notification_engine import NotificationEngine
@@ -431,6 +431,56 @@ async def get_tasks(
             for task in tasks
         ]
     }
+
+
+@app.post("/api/admin/reset-database")
+async def reset_database(db: Session = Depends(get_db)):
+    """
+    ADMIN ENDPOINT: Reset database by clearing all contact records
+    This stops SMS spam to historical contacts
+    Only contacts created after Feb 11, 2026 will be tracked going forward
+    """
+    try:
+        logger.info("Starting database reset...")
+        
+        # Count existing records
+        contact_count = db.query(Contact).count()
+        conversation_count = db.query(SMSConversation).count()
+        message_count = db.query(SMSMessage).count()
+        project_attempt_count = db.query(ProjectCreationAttempt).count()
+        
+        logger.info(f"Found {contact_count} contacts, {conversation_count} conversations, "
+                   f"{message_count} messages, {project_attempt_count} project attempts")
+        
+        # Delete all records (in correct order due to foreign keys)
+        db.query(ProjectCreationAttempt).delete()
+        db.query(SMSMessage).delete()
+        db.query(SMSConversation).delete()
+        db.query(Contact).delete()
+        
+        db.commit()
+        
+        logger.info("✅ Database reset complete! All contact records cleared.")
+        
+        return {
+            "success": True,
+            "message": "Database reset complete",
+            "records_deleted": {
+                "contacts": contact_count,
+                "conversations": conversation_count,
+                "messages": message_count,
+                "project_attempts": project_attempt_count
+            },
+            "note": "System will now only track contacts created after Feb 11, 2026"
+        }
+        
+    except Exception as e:
+        logger.error(f"Error resetting database: {e}")
+        db.rollback()
+        return {
+            "success": False,
+            "message": f"Error resetting database: {str(e)}"
+        }
 
 
 @app.get("/api/analytics/summary")

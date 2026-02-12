@@ -25,12 +25,17 @@ class ContactMonitor:
     def sync_contacts(self, db: Session) -> int:
         """
         Sync contacts from Albiware and identify new ones
+        Only tracks contacts created after Feb 11, 2026
         
         Returns:
             Number of new contacts found
         """
         try:
             logger.info("Starting contact sync from Albiware...")
+            
+            # Define cutoff date - only track contacts created after this date
+            cutoff_date = datetime(2026, 2, 11, 0, 0, 0)
+            logger.info(f"Only tracking contacts created after {cutoff_date}")
             
             # Get all contacts from Albiware
             contacts_data = self.albiware_client.get_all_contacts()
@@ -40,9 +45,18 @@ class ContactMonitor:
                 return 0
             
             new_contacts_count = 0
+            skipped_old_contacts = 0
             
             for contact_data in contacts_data:
                 contact_id = contact_data.get('id')
+                
+                # Parse the contact's creation date from Albiware
+                contact_created_at = self._parse_datetime(contact_data.get('createdAt'))
+                
+                # Skip contacts created before the cutoff date
+                if contact_created_at and contact_created_at < cutoff_date:
+                    skipped_old_contacts += 1
+                    continue
                 
                 # Check if contact already exists in our database
                 existing_contact = db.query(Contact).filter(
@@ -53,13 +67,13 @@ class ContactMonitor:
                     # New contact found!
                     new_contact = self._create_contact_record(db, contact_data)
                     new_contacts_count += 1
-                    logger.info(f"New contact found: {new_contact.full_name} (ID: {contact_id})")
+                    logger.info(f"New contact found: {new_contact.full_name} (ID: {contact_id}, Created: {contact_created_at})")
                     
                     # Schedule 24-hour follow-up
                     self._schedule_follow_up(db, new_contact)
             
             db.commit()
-            logger.info(f"Contact sync complete. Found {new_contacts_count} new contacts.")
+            logger.info(f"Contact sync complete. Found {new_contacts_count} new contacts. Skipped {skipped_old_contacts} old contacts.")
             return new_contacts_count
             
         except Exception as e:
