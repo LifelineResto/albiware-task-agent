@@ -239,14 +239,27 @@ class AlbiwareProjectCreator:
                         jQuery(customerSelect).select2('open');
                     }
                 """)
-                time.sleep(0.5)
+                time.sleep(1)  # Wait for dropdown to fully open
                 
                 # Step 3: Type customer name in the search box
                 logger.info(f"Typing customer name: {contact.full_name}")
-                search_input = page.locator('.select2-search__field').first
-                search_input.wait_for(state='visible', timeout=5000)
+                logger.info("Waiting for search input field...")
+                
+                # Try to find the search input with multiple strategies
+                try:
+                    search_input = page.locator('.select2-search__field').first
+                    search_input.wait_for(state='visible', timeout=10000)
+                    logger.info("Search field found")
+                except Exception as e:
+                    logger.error(f"Search field not found: {e}")
+                    # Try alternative selector
+                    logger.info("Trying alternative search field selector...")
+                    search_input = page.locator('input[type="search"]').first
+                    search_input.wait_for(state='visible', timeout=5000)
+                
                 search_input.fill(contact.full_name)
-                time.sleep(1.5)  # Wait for search results
+                logger.info(f"Typed '{contact.full_name}' into search field")
+                time.sleep(2)  # Wait for search results to load
                 
                 # Step 4: Click the matching result
                 logger.info("Waiting for search results...")
