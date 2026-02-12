@@ -288,7 +288,7 @@ async def test_send_followup(
                 full_name=contact_name,
                 phone_number=contact_phone,
                 email=None,
-                status=ContactStatus.PENDING_FOLLOW_UP,
+                status=ContactStatus.FOLLOW_UP_SCHEDULED,
                 created_at=datetime.utcnow()
             )
             db.add(contact)
