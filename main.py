@@ -542,7 +542,7 @@ async def run_migration(db: Session = Depends(get_db)):
 
 
 @app.post("/api/admin/trigger-project-creation")
-async def trigger_project_creation(db: Session = Depends(get_db)):
+def trigger_project_creation(db: Session = Depends(get_db)):
     """
     ADMIN ENDPOINT: Manually trigger project creation for pending contacts
     """
