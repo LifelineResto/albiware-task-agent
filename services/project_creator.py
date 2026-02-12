@@ -198,17 +198,53 @@ class AlbiwareProjectCreator:
                     logger.warning(f"Could not select {label_text}: {e}")
                     return False
             
-            # 1. Customer - Search and select
+            # 1. Customer - First select "Add Existing" option
             logger.info(f"Selecting customer: {contact.full_name}")
             try:
-                customer_input = page.locator('input[role="searchbox"]').first
-                customer_input.click()
-                customer_input.fill(contact.full_name)
-                time.sleep(1)
-                page.locator(f'li:has-text("{contact.full_name}")').first.click()
+                # Step 1: Select "Add Existing" from CustomerOption dropdown
+                logger.info("Setting CustomerOption to Add Existing")
+                page.evaluate("""
+                    const customerOption = document.querySelector('#CustomerOption');
+                    if (customerOption) {
+                        customerOption.value = 'AddExisting';
+                        customerOption.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
+                """)
+                time.sleep(1)  # Wait for customer field to appear
+                
+                # Step 2: Find and interact with the customer Select2 field
+                logger.info("Opening customer Select2 dropdown")
+                page.evaluate("""
+                    const customerSelect = document.querySelector('select[name="ProjectCustomer.ExistingOrganizationContactIds"]');
+                    if (customerSelect && window.jQuery) {
+                        // Initialize Select2 if not already done
+                        if (!jQuery(customerSelect).data('select2')) {
+                            jQuery(customerSelect).select2();
+                        }
+                        // Open the dropdown
+                        jQuery(customerSelect).select2('open');
+                    }
+                """)
                 time.sleep(0.5)
+                
+                # Step 3: Type customer name in the search box
+                logger.info(f"Typing customer name: {contact.full_name}")
+                search_input = page.locator('.select2-search__field').first
+                search_input.wait_for(state='visible', timeout=5000)
+                search_input.fill(contact.full_name)
+                time.sleep(1.5)  # Wait for search results
+                
+                # Step 4: Click the matching result
+                logger.info("Clicking customer from results")
+                result_item = page.locator(f'.select2-results__option:has-text("{contact.full_name}")').first
+                result_item.wait_for(state='visible', timeout=5000)
+                result_item.click()
+                time.sleep(0.5)
+                logger.info("Customer selected successfully")
+                
             except Exception as e:
                 logger.error(f"Failed to select customer: {e}")
+                logger.error(f"Full error: {str(e)}")
                 return False
             
             # 2. Project Type
