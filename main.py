@@ -374,7 +374,12 @@ async def get_contacts(
                 "created_at": contact.created_at.isoformat() if contact.created_at else None,
                 "follow_up_sent_at": contact.follow_up_sent_at.isoformat() if contact.follow_up_sent_at else None,
                 "project_creation_needed": contact.project_creation_needed,
-                "project_created": contact.project_created
+                "project_created": contact.project_created,
+                "project_type": contact.project_type,
+                "property_type": contact.property_type,
+                "has_insurance": contact.has_insurance,
+                "insurance_company": contact.insurance_company,
+                "referral_source": contact.referral_source
             }
             for contact in contacts
         ]
