@@ -617,6 +617,46 @@ async def debug_query(db: Session = Depends(get_db)):
         return {"error": str(e)}
 
 
+@app.post("/api/admin/update-contact-albiware-id")
+async def update_contact_albiware_id(
+    contact_id: int,
+    new_albiware_id: int,
+    new_name: str = None,
+    db: Session = Depends(get_db)
+):
+    """
+    ADMIN ENDPOINT: Update a contact's Albiware contact ID
+    """
+    try:
+        contact = db.query(Contact).filter(Contact.id == contact_id).first()
+        if not contact:
+            return {"success": False, "message": f"Contact {contact_id} not found"}
+        
+        old_id = contact.albiware_contact_id
+        old_name = contact.full_name
+        
+        contact.albiware_contact_id = new_albiware_id
+        if new_name:
+            contact.full_name = new_name
+        
+        db.commit()
+        
+        return {
+            "success": True,
+            "message": "Contact updated",
+            "changes": {
+                "contact_id": contact_id,
+                "old_albiware_id": old_id,
+                "new_albiware_id": new_albiware_id,
+                "old_name": old_name,
+                "new_name": contact.full_name
+            }
+        }
+    except Exception as e:
+        db.rollback()
+        return {"success": False, "message": str(e)}
+
+
 @app.get("/api/analytics/summary")
 async def get_analytics_summary(db: Session = Depends(get_db)):
     """Get summary analytics for both tasks and contacts."""
