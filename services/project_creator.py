@@ -159,7 +159,7 @@ class AlbiwareProjectCreator:
             # Fill login form
             page.fill('#Email', self.email)
             logger.info(f"Filled email: {self.email}")
-            page.fill('#Password', self.password)
+            page.fill('#password', self.password)
             logger.info("Filled password")
             page.click('#btn-login')
             logger.info("Clicked login button")
