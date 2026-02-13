@@ -428,6 +428,52 @@ class AlbiwareProjectCreator:
         try:
             logger.info("Submitting project form...")
             
+            # Log form state before submitting
+            try:
+                form_state = page.evaluate("""
+                    (function() {
+                        const state = {};
+                        
+                        // Check CustomerOption
+                        const customerOption = document.querySelector('#CustomerOption');
+                        if (customerOption) {
+                            const kendoWidget = window.jQuery && jQuery(customerOption).data('kendoDropDownList');
+                            state.customerOption = kendoWidget ? kendoWidget.value() : customerOption.value;
+                        }
+                        
+                        // Check Customer select
+                        const customerSelect = document.querySelector('select[name="ProjectCustomer.ExistingOrganizationContactIds"]');
+                        state.customer = customerSelect ? customerSelect.value : null;
+                        
+                        // Check ProjectType
+                        const projectType = document.querySelector('#ProjectTypeId');
+                        if (projectType) {
+                            const kendoWidget = window.jQuery && jQuery(projectType).data('kendoDropDownList');
+                            state.projectType = kendoWidget ? kendoWidget.value() : projectType.value;
+                        }
+                        
+                        // Check PropertyType
+                        const propertyType = document.querySelector('#PropertyType');
+                        if (propertyType) {
+                            const kendoWidget = window.jQuery && jQuery(propertyType).data('kendoComboBox');
+                            state.propertyType = kendoWidget ? kendoWidget.value() : propertyType.value;
+                        }
+                        
+                        // Check Insurance
+                        const insurance = document.querySelector('#CoveredLoss');
+                        state.insurance = insurance ? insurance.value : null;
+                        
+                        // Check Staff
+                        const staff = document.querySelector('#StaffId');
+                        state.staff = staff ? staff.value : null;
+                        
+                        return state;
+                    })()
+                """)
+                logger.info(f"Form state before submit: {form_state}")
+            except Exception as e:
+                logger.warning(f"Could not log form state: {e}")
+            
             # Check if submit button exists
             submit_button = page.locator('input#SubmitButton')
             if submit_button.count() == 0:
