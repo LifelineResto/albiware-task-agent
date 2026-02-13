@@ -323,25 +323,39 @@ class AlbiwareProjectCreator:
                 logger.error(f"Full error: {str(e)}")
                 return False
             
-            # 2. Project Type - Click dropdown and select option
+            # 2. Project Type - Use Kendo API directly
             try:
                 logger.info("Selecting Project Type")
-                page.click('label:has-text("Project Type") + span[role="listbox"]')
+                page.evaluate("""
+                    const projectType = document.querySelector('#ProjectTypeId');
+                    if (projectType && window.jQuery) {
+                        const kendoWidget = jQuery(projectType).data('kendoDropDownList');
+                        if (kendoWidget) {
+                            kendoWidget.value('1');  // Emergency Mitigation Services
+                            kendoWidget.trigger('change');
+                        }
+                    }
+                """)
                 time.sleep(1)
-                page.click('li:has-text("Emergency Mitigation Services (EMS)")')
-                time.sleep(0.5)
                 logger.info("✓ Project Type selected")
             except Exception as e:
                 logger.error(f"✗ Failed to select Project Type: {e}")
             
-            # 3. Property Type - Click dropdown and select option
+            # 3. Property Type - Use Kendo ComboBox API
             if contact.property_type:
                 try:
                     logger.info(f"Selecting Property Type: {contact.property_type}")
-                    page.click('label:has-text("Property Type") + span[role="combobox"]')
+                    page.evaluate(f"""
+                        const propertyType = document.querySelector('#PropertyType');
+                        if (propertyType && window.jQuery) {{
+                            const kendoWidget = jQuery(propertyType).data('kendoComboBox');
+                            if (kendoWidget) {{
+                                kendoWidget.value('{contact.property_type}');
+                                kendoWidget.trigger('change');
+                            }}
+                        }}
+                    """)
                     time.sleep(1)
-                    page.click(f'li:has-text("{contact.property_type}")')
-                    time.sleep(0.5)
                     logger.info(f"✓ Property Type selected: {contact.property_type}")
                 except Exception as e:
                     logger.error(f"✗ Failed to select Property Type: {e}")
