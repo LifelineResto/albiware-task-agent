@@ -505,7 +505,10 @@ class AlbiwareProjectCreator:
             
         except Exception as e:
             logger.error(f"Form filling error: {e}")
-            return False
+            import traceback
+            error_details = traceback.format_exc()
+            logger.error(f"Full traceback:\n{error_details}")
+            raise Exception(f"Form filling error: {e}\n{error_details}")
     
     def _submit_and_verify(self, page: Page) -> Optional[int]:
         """Submit the form and verify project was created"""
