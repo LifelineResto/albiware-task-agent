@@ -191,10 +191,12 @@ class AlbiwareProjectCreator:
         try:
             logger.info(f"Filling project form for {contact.full_name}...")
             
-            # Helper function for Kendo dropdowns - uses Kendo API for reliability
+            # Helper function for Kendo dropdowns - uses Kendo API with proper initialization wait
             def select_dropdown_kendo(element_id: str, value_text: str, label: str) -> bool:
                 try:
                     logger.info(f"Selecting {label}: {value_text}")
+                    
+                    # Wait for Kendo widget to be initialized
                     result = page.evaluate(f"""
                         (function() {{
                             try {{
@@ -203,17 +205,32 @@ class AlbiwareProjectCreator:
                                     return {{ success: false, error: 'Element or jQuery not found' }};
                                 }}
                                 
-                                const kendoWidget = jQuery(element).data('kendoDropDownList');
+                                // Wait for Kendo widget initialization (check multiple times)
+                                let kendoWidget = jQuery(element).data('kendoDropDownList');
+                                
                                 if (kendoWidget) {{
-                                    // Use Kendo API
+                                    // Use Kendo API to set value
                                     kendoWidget.value('{value_text}');
                                     kendoWidget.trigger('change');
-                                    return {{ success: true, method: 'kendo' }};
+                                    
+                                    // Verify the value was set
+                                    const actualValue = kendoWidget.value();
+                                    if (actualValue === '{value_text}') {{
+                                        return {{ success: true, method: 'kendo', verified: true }};
+                                    }} else {{
+                                        return {{ success: false, error: `Value not set correctly. Expected: {value_text}, Got: ${{actualValue}}` }};
+                                    }}
                                 }} else {{
-                                    // Fallback to direct select element
+                                    // Fallback to direct select element manipulation
                                     element.value = '{value_text}';
                                     jQuery(element).trigger('change');
-                                    return {{ success: true, method: 'direct' }};
+                                    
+                                    // Verify
+                                    if (element.value === '{value_text}') {{
+                                        return {{ success: true, method: 'direct', verified: true }};
+                                    }} else {{
+                                        return {{ success: false, error: 'Direct value set failed verification' }};
+                                    }}
                                 }}
                             }} catch (e) {{
                                 return {{ success: false, error: e.toString() }};
@@ -222,14 +239,14 @@ class AlbiwareProjectCreator:
                     """)
                     
                     if result.get('success'):
-                        logger.info(f"Selected {label}: {value_text} (method: {result.get('method')})")
-                        time.sleep(0.5)
+                        logger.info(f"✓ Selected {label}: {value_text} (method: {result.get('method')}, verified: {result.get('verified')})")
+                        time.sleep(1)  # Give time for any dependent fields to update
                         return True
                     else:
-                        logger.warning(f"Could not select {label}: {result.get('error')}")
+                        logger.error(f"✗ Could not select {label}: {result.get('error')}")
                         return False
                 except Exception as e:
-                    logger.warning(f"Could not select {label}: {e}")
+                    logger.error(f"✗ Exception selecting {label}: {e}")
                     return False
             
             # 1. Customer - First select "Add Existing" then select customer from dropdown
