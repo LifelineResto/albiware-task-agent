@@ -191,64 +191,89 @@ class AlbiwareProjectCreator:
         try:
             logger.info(f"Filling project form for {contact.full_name}...")
             
-            # Helper function for Kendo dropdowns
-            def select_dropdown(label_text: str, value_text: str) -> bool:
+            # Helper function for Kendo dropdowns - uses Kendo API for reliability
+            def select_dropdown_kendo(element_id: str, value_text: str, label: str) -> bool:
                 try:
-                    # Scroll label into view
-                    page.locator(f'label:has-text("{label_text}")').scroll_into_view_if_needed()
-                    time.sleep(0.3)
+                    logger.info(f"Selecting {label}: {value_text}")
+                    result = page.evaluate(f"""
+                        (function() {{
+                            try {{
+                                const element = document.querySelector('#{element_id}');
+                                if (!element || !window.jQuery) {{
+                                    return {{ success: false, error: 'Element or jQuery not found' }};
+                                }}
+                                
+                                const kendoWidget = jQuery(element).data('kendoDropDownList');
+                                if (kendoWidget) {{
+                                    // Use Kendo API
+                                    kendoWidget.value('{value_text}');
+                                    kendoWidget.trigger('change');
+                                    return {{ success: true, method: 'kendo' }};
+                                }} else {{
+                                    // Fallback to direct select element
+                                    element.value = '{value_text}';
+                                    jQuery(element).trigger('change');
+                                    return {{ success: true, method: 'direct' }};
+                                }}
+                            }} catch (e) {{
+                                return {{ success: false, error: e.toString() }};
+                            }}
+                        }})()
+                    """)
                     
-                    # Click dropdown to open
-                    page.locator(f'label:has-text("{label_text}")').locator('..').locator('span[role="listbox"], span[role="combobox"]').first.click()
-                    time.sleep(0.5)
-                    
-                    # Select option
-                    page.locator(f'li:has-text("{value_text}")').first.click(timeout=5000)
-                    time.sleep(0.3)
-                    
-                    logger.info(f"Selected {label_text}: {value_text}")
-                    return True
+                    if result.get('success'):
+                        logger.info(f"Selected {label}: {value_text} (method: {result.get('method')})")
+                        time.sleep(0.5)
+                        return True
+                    else:
+                        logger.warning(f"Could not select {label}: {result.get('error')}")
+                        return False
                 except Exception as e:
-                    logger.warning(f"Could not select {label_text}: {e}")
+                    logger.warning(f"Could not select {label}: {e}")
                     return False
             
-            # 1. Customer - Use JavaScript to directly set the customer value
+            # 1. Customer - First select "Add Existing" then select customer from dropdown
             logger.info(f"Selecting customer: {contact.full_name} (Albiware ID: {contact.albiware_contact_id})")
             try:
-                # Step 1: Select "Add Existing" from CustomerOption dropdown
-                logger.info("Setting CustomerOption to Add Existing")
+                # Step 1: Use Kendo API to select "Add Existing" from CustomerOption dropdown
+                logger.info("Setting CustomerOption to Add Existing using Kendo API")
                 page.evaluate("""
                     const customerOption = document.querySelector('#CustomerOption');
-                    if (customerOption) {
-                        customerOption.value = 'AddExisting';
-                        customerOption.dispatchEvent(new Event('change', { bubbles: true }));
+                    if (customerOption && window.jQuery) {
+                        const kendoWidget = jQuery(customerOption).data('kendoDropDownList');
+                        if (kendoWidget) {
+                            kendoWidget.value('AddExisting');
+                            kendoWidget.trigger('change');
+                        } else {
+                            // Fallback to direct value setting
+                            customerOption.value = 'AddExisting';
+                            customerOption.dispatchEvent(new Event('change', { bubbles: true }));
+                        }
                     }
                 """)
-                logger.info("Waiting for customer field to appear...")
-                time.sleep(4)  # Wait for the customer field to be added to DOM
+                logger.info("Waiting for customer Select2 field to appear...")
+                time.sleep(5)  # Give plenty of time for the field to be added
                 
-                # Step 2: Use JavaScript to directly set the Select2 value
-                logger.info(f"Setting customer Select2 value to {contact.albiware_contact_id}")
+                # Step 2: Verify customer select exists
+                customer_select = page.locator('select[name="ProjectCustomer.ExistingOrganizationContactIds"]')
+                customer_select.wait_for(state='attached', timeout=10000)
+                logger.info("Customer select element found")
+                
+                # Step 3: Use Select2 API to set the value
+                logger.info(f"Setting customer using Select2 API: {contact.albiware_contact_id}")
                 result = page.evaluate(f"""
                     (function() {{
                         try {{
-                            // Wait for Select2 to be initialized
                             const customerSelect = document.querySelector('select[name="ProjectCustomer.ExistingOrganizationContactIds"]');
-                            if (!customerSelect) {{
-                                return {{ success: false, error: 'Customer select element not found' }};
+                            if (!customerSelect || !window.jQuery) {{
+                                return {{ success: false, error: 'Select element or jQuery not found' }};
                             }}
                             
-                            // Check if jQuery and Select2 are available
-                            if (typeof jQuery === 'undefined' || typeof jQuery.fn.select2 === 'undefined') {{
-                                return {{ success: false, error: 'jQuery or Select2 not available' }};
-                            }}
-                            
-                            // Create a new option with the contact ID and name
+                            const $select = jQuery(customerSelect);
                             const contactId = '{contact.albiware_contact_id}';
                             const contactName = '{contact.full_name}';
                             
-                            // Add the option if it doesn't exist
-                            const $select = jQuery(customerSelect);
+                            // Add option and select it
                             if ($select.find(`option[value="${{contactId}}"]`).length === 0) {{
                                 const newOption = new Option(contactName, contactId, true, true);
                                 $select.append(newOption);
@@ -256,7 +281,8 @@ class AlbiwareProjectCreator:
                                 $select.val(contactId);
                             }}
                             
-                            // Trigger change event
+                            // Trigger Select2 change
+                            $select.trigger('change.select2');
                             $select.trigger('change');
                             
                             return {{ success: true, value: contactId, name: contactName }};
@@ -266,13 +292,13 @@ class AlbiwareProjectCreator:
                     }})()
                 """)
                 
-                logger.info(f"JavaScript result: {result}")
-                
+                logger.info(f"Customer selection result: {result}")
                 if not result.get('success'):
-                    raise Exception(f"Failed to set customer value: {result.get('error')}")
+                    raise Exception(f"Failed to set customer: {result.get('error')}")
                 
-                time.sleep(1)
-                logger.info(f"Customer selected successfully: {result.get('name')}")
+                time.sleep(2)
+                logger.info(f"Customer selected: {result.get('name')}")
+                
                 
                 
             except Exception as e:
@@ -280,40 +306,25 @@ class AlbiwareProjectCreator:
                 logger.error(f"Full error: {str(e)}")
                 return False
             
-            # 2. Project Type
-            project_type_map = {
-                'Water Damage': 'Emergency Mitigation Services (EMS)',
-                'Fire Damage': 'Emergency Mitigation Services (EMS)',
-                'Mold': 'Emergency Mitigation Services (EMS)',
-                'Other': 'Emergency Mitigation Services (EMS)'
-            }
-            albiware_project_type = project_type_map.get(contact.project_type, 'Emergency Mitigation Services (EMS)')
-            select_dropdown("Project Type", albiware_project_type)
+            # 2. Project Type - Use Kendo API
+            project_type_value = '1'  # ID for Emergency Mitigation Services (EMS)
+            select_dropdown_kendo('ProjectTypeId', project_type_value, 'Project Type')
             
-            # 3. Property Type
+            # 3. Property Type - Use Kendo API
             if contact.property_type:
-                select_dropdown("Property Type", contact.property_type)
+                select_dropdown_kendo('PropertyType', contact.property_type, 'Property Type')
             
-            # 4. Location
-            select_dropdown("Location", "Main Office")
+            # 4. Location - Use Kendo API (already defaulted to Main Office)
+            select_dropdown_kendo('LocationId', '1', 'Location')
             
-            # 5. Insurance
+            # 5. Insurance - Use Kendo API
             insurance_value = "Yes" if contact.has_insurance else "No"
-            select_dropdown("Insurance Info", insurance_value)
+            select_dropdown_kendo('CoveredLoss', insurance_value, 'Insurance Info')
             
-            # 6. Referral Source (already in Albiware format from SMS)
-            if contact.referral_source:
-                select_dropdown("Referral Source", contact.referral_source)
-            else:
-                select_dropdown("Referral Source", "Lead Gen")  # Default
+            # 6. Referral Source - Skip for now, not required
             
-            # 7. Assigned Staff - Use direct select element
-            try:
-                logger.info("Selecting Staff: Rodolfo Arceo")
-                page.select_option('select#StaffId', label='Rodolfo Arceo')
-                logger.info("Staff selected successfully")
-            except Exception as e:
-                logger.warning(f"Could not select Staff: {e}")
+            # 7. Assigned Staff - Use Kendo API
+            select_dropdown_kendo('StaffId', '4', 'Staff')  # 4 = Rodolfo Arceo
             
             # 8. Project Roles - Use Select2 for searchable dropdown
             try:
