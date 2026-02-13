@@ -307,15 +307,31 @@ class AlbiwareProjectCreator:
             else:
                 select_dropdown("Referral Source", "Lead Gen")  # Default
             
-            # 7. Assigned Staff
-            select_dropdown("Staff", "Rodolfo Arceo")
-            
-            # 8. Project Roles
+            # 7. Assigned Staff - Use direct select element
             try:
-                page.locator('option:has-text("Estimator")').click()
-                logger.info("Selected role: Estimator")
+                logger.info("Selecting Staff: Rodolfo Arceo")
+                page.select_option('select#StaffId', label='Rodolfo Arceo')
+                logger.info("Staff selected successfully")
             except Exception as e:
-                logger.warning(f"Could not select Estimator: {e}")
+                logger.warning(f"Could not select Staff: {e}")
+            
+            # 8. Project Roles - Use Select2 for searchable dropdown
+            try:
+                logger.info("Selecting Project Role: Estimator")
+                # Open the Project Role Select2 dropdown
+                page.locator('select#ProjectRoleId').evaluate('el => jQuery(el).select2("open")')
+                time.sleep(0.5)
+                
+                # Type to search for Estimator
+                search_input = page.locator('.select2-search__field').last
+                search_input.type('Estimator', delay=100)
+                time.sleep(1)
+                
+                # Click the result
+                page.locator('.select2-results__option:has-text("Estimator")').first.click()
+                logger.info("Project role selected successfully")
+            except Exception as e:
+                logger.warning(f"Could not select Project Role: {e}")
             
             # 9. Internal Details
             try:
@@ -344,10 +360,28 @@ class AlbiwareProjectCreator:
         try:
             logger.info("Submitting project form...")
             
+            # Check if submit button exists
+            submit_button = page.locator('input#SubmitButton')
+            if submit_button.count() == 0:
+                logger.error("Submit button not found!")
+                # Try alternative selectors
+                logger.info("Trying alternative submit button selectors...")
+                submit_button = page.locator('button[type="submit"], input[type="submit"]').first
+            
+            # Wait for button to be visible and enabled
+            submit_button.wait_for(state='visible', timeout=10000)
+            logger.info("Submit button found and visible")
+            
+            # Scroll to button
+            submit_button.scroll_into_view_if_needed()
+            time.sleep(0.5)
+            
             # Click Create button
-            page.click('input#SubmitButton')
+            submit_button.click()
+            logger.info("Clicked submit button")
             
             # Wait for redirect to project detail page
+            logger.info("Waiting for redirect to project page...")
             page.wait_for_url("**/Project/*", timeout=30000)
             
             current_url = page.url
@@ -368,11 +402,20 @@ class AlbiwareProjectCreator:
             logger.warning("Could not extract project ID from URL")
             return None
             
-        except PlaywrightTimeout:
-            logger.error("Timeout waiting for project creation redirect")
+        except PlaywrightTimeout as e:
+            logger.error(f"Timeout waiting for project creation redirect: {e}")
+            logger.info(f"Current URL: {page.url}")
+            # Check for validation errors on the page
+            try:
+                errors = page.locator('.field-validation-error, .validation-summary-errors').all_text_contents()
+                if errors:
+                    logger.error(f"Validation errors on form: {errors}")
+            except:
+                pass
             return None
         except Exception as e:
             logger.error(f"Submit/verify error: {e}")
+            logger.info(f"Current URL: {page.url}")
             return None
     
     def process_pending_projects(self, db: Session) -> int:
