@@ -224,21 +224,20 @@ class AlbiwareProjectCreator:
                         customerOption.dispatchEvent(new Event('change', { bubbles: true }));
                     }
                 """)
-                time.sleep(1)  # Wait for customer field to appear
+                logger.info("Waiting for customer field to appear after selecting Add Existing...")
                 
-                # Step 2: Click on the CUSTOMER Select2 container (not the Option dropdown)
+                # Step 2: Wait for the customer Select2 field to appear, then click it
                 logger.info("Opening customer Select2 dropdown")
                 try:
-                    # Find the customer field's Select2 container using the parent select element
-                    # This ensures we get the SECOND Select2 (customer), not the first (option)
+                    # Wait for the customer select element to be added to the DOM
                     customer_select = page.locator('select[name="ProjectCustomer.ExistingOrganizationContactIds"]')
-                    customer_select.wait_for(state='attached', timeout=5000)
-                    logger.info("Found customer select element")
+                    customer_select.wait_for(state='attached', timeout=10000)
+                    logger.info("Customer select element found in DOM")
                     
-                    # Find the Select2 container that's associated with this select
-                    # Use nth(1) to get the SECOND .select2-selection on the page
+                    # Now wait for its Select2 container to be visible
+                    # This is the SECOND .select2-selection on the page (first is the Option dropdown)
                     select2_container = page.locator('.select2-selection').nth(1)
-                    select2_container.wait_for(state='visible', timeout=5000)
+                    select2_container.wait_for(state='visible', timeout=10000)
                     logger.info("Found customer Select2 container (2nd one), clicking to open...")
                     select2_container.click()
                     time.sleep(1.5)  # Wait for dropdown to fully open
