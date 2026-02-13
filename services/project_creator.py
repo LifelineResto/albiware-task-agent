@@ -281,20 +281,29 @@ class AlbiwareProjectCreator:
             try:
                 # Step 1: Use Kendo API to select "Add Existing" from CustomerOption dropdown
                 logger.info("Setting CustomerOption to Add Existing using Kendo API")
-                page.evaluate("""
-                    const customerOption = document.querySelector('#CustomerOption');
-                    if (customerOption && window.jQuery) {
+                result = page.evaluate("""
+                    (function() {
+                        const customerOption = document.querySelector('#CustomerOption');
+                        if (!customerOption || !window.jQuery) {
+                            return {success: false, error: 'CustomerOption element or jQuery not found'};
+                        }
                         const kendoWidget = jQuery(customerOption).data('kendoDropDownList');
                         if (kendoWidget) {
                             kendoWidget.value('AddExisting');
                             kendoWidget.trigger('change');
+                            return {success: true, value: kendoWidget.value(), method: 'kendo'};
                         } else {
                             // Fallback to direct value setting
                             customerOption.value = 'AddExisting';
                             customerOption.dispatchEvent(new Event('change', { bubbles: true }));
+                            return {success: true, value: customerOption.value, method: 'direct'};
                         }
-                    }
+                    })()
                 """)
+                logger.info(f"CustomerOption result: {result}")
+                if not result.get('success'):
+                    raise Exception(f"Failed to set CustomerOption: {result.get('error')}")
+                
                 logger.info("Waiting for customer Select2 field to appear...")
                 time.sleep(5)  # Give plenty of time for the field to be added
                 
