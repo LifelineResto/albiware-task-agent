@@ -69,8 +69,21 @@ class AlbiwareProjectCreator:
                         raise Exception("Could not navigate to project creation")
                     
                     # Fill project form
-                    if not self._fill_project_form(page, contact):
-                        raise Exception("Could not fill project form")
+                    fill_result = self._fill_project_form(page, contact)
+                    logger.info(f"Form fill result: {fill_result}")
+                    if not fill_result:
+                        # Get page state for debugging
+                        page_state = page.evaluate("""
+                            (function() {
+                                return {
+                                    url: window.location.href,
+                                    title: document.title,
+                                    hasJQuery: !!window.jQuery,
+                                    formExists: !!document.querySelector('form')
+                                };
+                            })()
+                        """)
+                        raise Exception(f"Could not fill project form. Page state: {page_state}")
                     
                     # Submit and verify
                     project_id = self._submit_and_verify(page)
