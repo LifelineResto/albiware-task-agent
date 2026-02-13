@@ -264,13 +264,15 @@ class AlbiwareProjectCreator:
                     search_input = page.locator('input[type="search"]').first
                     search_input.wait_for(state='visible', timeout=5000)
                 
-                search_input.fill(contact.full_name)
+                # Type slowly to trigger search
+                search_input.type(contact.full_name, delay=100)  # 100ms delay between keystrokes
                 logger.info(f"Typed '{contact.full_name}' into search field")
-                time.sleep(2)  # Wait for search results to load
                 
-                # Step 4: Click the matching result
-                logger.info("Waiting for search results...")
-                time.sleep(1)  # Extra wait for results to load
+                # Step 4: Wait for search results to load
+                logger.info("Waiting for search results to load...")
+                time.sleep(3)  # Longer wait for search to complete
+                
+                logger.info("Checking search results...")
                 
                 # Log all available options for debugging
                 try:
