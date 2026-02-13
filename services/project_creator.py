@@ -413,7 +413,23 @@ class AlbiwareProjectCreator:
             
             # Wait for redirect to project detail page
             logger.info("Waiting for redirect to project page...")
-            page.wait_for_url("**/Project/*", timeout=30000)
+            logger.info(f"Current URL before wait: {page.url}")
+            
+            try:
+                page.wait_for_url("**/Project/*", timeout=30000)
+            except PlaywrightTimeout:
+                logger.error(f"Timeout waiting for redirect. Current URL: {page.url}")
+                # Check if we're still on /Project/New
+                if '/Project/New' in page.url:
+                    logger.error("Still on /Project/New - form may have validation errors")
+                    # Check for any error messages
+                    try:
+                        errors = page.locator('.field-validation-error, .validation-summary-errors li, .alert-danger').all_text_contents()
+                        if errors:
+                            logger.error(f"Validation errors found: {errors}")
+                    except:
+                        pass
+                raise
             
             current_url = page.url
             logger.info(f"Project created, redirected to: {current_url}")
