@@ -323,24 +323,31 @@ class AlbiwareProjectCreator:
                 logger.error(f"Full error: {str(e)}")
                 return False
             
-            # 2. Project Type - Use Kendo API directly
+            # 2. Project Type - Wait for Kendo widget then use API
             try:
                 logger.info("Selecting Project Type")
-                result = page.evaluate("""
-                    (function() {
-                        const projectType = document.querySelector('#ProjectTypeId');
-                        if (!projectType || !window.jQuery) {
-                            return {success: false, error: 'Element or jQuery not found'};
-                        }
-                        const kendoWidget = jQuery(projectType).data('kendoDropDownList');
-                        if (kendoWidget) {
+                # Wait for Kendo widget to be initialized
+                for attempt in range(10):
+                    result = page.evaluate("""
+                        (function() {
+                            const projectType = document.querySelector('#ProjectTypeId');
+                            if (!projectType || !window.jQuery) {
+                                return {success: false, error: 'Element or jQuery not found', ready: false};
+                            }
+                            const kendoWidget = jQuery(projectType).data('kendoDropDownList');
+                            if (!kendoWidget) {
+                                return {success: false, error: 'Kendo widget not initialized yet', ready: false};
+                            }
                             kendoWidget.value('1');  // Emergency Mitigation Services
                             kendoWidget.trigger('change');
-                            return {success: true, value: kendoWidget.value()};
-                        }
-                        return {success: false, error: 'Kendo widget not found'};
-                    })()
-                """)
+                            return {success: true, value: kendoWidget.value(), ready: true};
+                        })()
+                    """)
+                    if result.get('ready'):
+                        break
+                    time.sleep(0.5)
+                    logger.info(f"Waiting for Project Type widget... attempt {attempt+1}")
+                
                 if not result.get('success'):
                     logger.error(f"✗ Failed to select Project Type: {result.get('error')}")
                     return False
@@ -350,25 +357,32 @@ class AlbiwareProjectCreator:
                 logger.error(f"✗ Failed to select Project Type: {e}")
                 return False
             
-            # 3. Property Type - Use Kendo ComboBox API
+            # 3. Property Type - Wait for Kendo ComboBox widget then use API
             if contact.property_type:
                 try:
                     logger.info(f"Selecting Property Type: {contact.property_type}")
-                    result = page.evaluate(f"""
-                        (function() {{
-                            const propertyType = document.querySelector('#PropertyType');
-                            if (!propertyType || !window.jQuery) {{
-                                return {{success: false, error: 'Element or jQuery not found'}};
-                            }}
-                            const kendoWidget = jQuery(propertyType).data('kendoComboBox');
-                            if (kendoWidget) {{
+                    # Wait for Kendo widget to be initialized
+                    for attempt in range(10):
+                        result = page.evaluate(f"""
+                            (function() {{
+                                const propertyType = document.querySelector('#PropertyType');
+                                if (!propertyType || !window.jQuery) {{
+                                    return {{success: false, error: 'Element or jQuery not found', ready: false}};
+                                }}
+                                const kendoWidget = jQuery(propertyType).data('kendoComboBox');
+                                if (!kendoWidget) {{
+                                    return {{success: false, error: 'Kendo widget not initialized yet', ready: false}};
+                                }}
                                 kendoWidget.value('{contact.property_type}');
                                 kendoWidget.trigger('change');
-                                return {{success: true, value: kendoWidget.value()}};
-                            }}
-                            return {{success: false, error: 'Kendo widget not found'}};
-                        }})()
-                    """)
+                                return {{success: true, value: kendoWidget.value(), ready: true}};
+                            }})()
+                        """)
+                        if result.get('ready'):
+                            break
+                        time.sleep(0.5)
+                        logger.info(f"Waiting for Property Type widget... attempt {attempt+1}")
+                    
                     if not result.get('success'):
                         logger.error(f"✗ Failed to select Property Type: {result.get('error')}")
                         return False
