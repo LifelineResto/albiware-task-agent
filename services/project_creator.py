@@ -146,22 +146,30 @@ class AlbiwareProjectCreator:
         try:
             logger.info("Logging in to Albiware...")
             page.goto(f"{self.albiware_url}/login", wait_until="domcontentloaded", timeout=30000)
+            logger.info(f"Loaded page: {page.url}")
             
             # Wait for login form
             page.wait_for_selector('#Email', timeout=10000)
+            logger.info("Found email field")
             
             # Fill login form
             page.fill('#Email', self.email)
+            logger.info(f"Filled email: {self.email}")
             page.fill('#Password', self.password)
+            logger.info("Filled password")
             page.click('#btn-login')
+            logger.info("Clicked login button")
             
             # Wait for navigation after login
             page.wait_for_load_state("networkidle", timeout=15000)
+            logger.info(f"After login URL: {page.url}")
             logger.info("Login successful")
             return True
             
         except Exception as e:
             logger.error(f"Login error: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
             return False
     
     def _navigate_to_create_project(self, page: Page) -> bool:
