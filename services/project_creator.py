@@ -323,25 +323,51 @@ class AlbiwareProjectCreator:
                 logger.error(f"Full error: {str(e)}")
                 return False
             
-            # 2. Project Type - Use Kendo API
-            project_type_value = '1'  # ID for Emergency Mitigation Services (EMS)
-            select_dropdown_kendo('ProjectTypeId', project_type_value, 'Project Type')
+            # 2. Project Type - Click dropdown and select option
+            try:
+                logger.info("Selecting Project Type")
+                page.click('label:has-text("Project Type") + span[role="listbox"]')
+                time.sleep(1)
+                page.click('li:has-text("Emergency Mitigation Services (EMS)")')
+                time.sleep(0.5)
+                logger.info("✓ Project Type selected")
+            except Exception as e:
+                logger.error(f"✗ Failed to select Project Type: {e}")
             
-            # 3. Property Type - Use Kendo API
+            # 3. Property Type - Click dropdown and select option
             if contact.property_type:
-                select_dropdown_kendo('PropertyType', contact.property_type, 'Property Type')
+                try:
+                    logger.info(f"Selecting Property Type: {contact.property_type}")
+                    page.click('label:has-text("Property Type") + span[role="combobox"]')
+                    time.sleep(1)
+                    page.click(f'li:has-text("{contact.property_type}")')
+                    time.sleep(0.5)
+                    logger.info(f"✓ Property Type selected: {contact.property_type}")
+                except Exception as e:
+                    logger.error(f"✗ Failed to select Property Type: {e}")
             
-            # 4. Location - Use Kendo API (already defaulted to Main Office)
-            select_dropdown_kendo('LocationId', '1', 'Location')
+            # 4. Location - Already defaulted to Main Office, skip
             
-            # 5. Insurance - Use Kendo API
-            insurance_value = "Yes" if contact.has_insurance else "No"
-            select_dropdown_kendo('CoveredLoss', insurance_value, 'Insurance Info')
+            # 5. Insurance - Use select element directly
+            try:
+                insurance_value = "Yes" if contact.has_insurance else "No"
+                logger.info(f"Selecting Insurance: {insurance_value}")
+                page.select_option('select#CoveredLoss', label=insurance_value)
+                time.sleep(0.5)
+                logger.info(f"✓ Insurance selected: {insurance_value}")
+            except Exception as e:
+                logger.error(f"✗ Failed to select Insurance: {e}")
             
             # 6. Referral Source - Skip for now, not required
             
-            # 7. Assigned Staff - Use Kendo API
-            select_dropdown_kendo('StaffId', '4', 'Staff')  # 4 = Rodolfo Arceo
+            # 7. Assigned Staff - Use select element directly
+            try:
+                logger.info("Selecting Staff: Rodolfo Arceo")
+                page.select_option('select#StaffId', label='Rodolfo Arceo')
+                time.sleep(0.5)
+                logger.info("✓ Staff selected: Rodolfo Arceo")
+            except Exception as e:
+                logger.error(f"✗ Failed to select Staff: {e}")
             
             # 8. Project Roles - Use Select2 for searchable dropdown
             try:
