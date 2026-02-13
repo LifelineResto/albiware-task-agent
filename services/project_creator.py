@@ -326,39 +326,57 @@ class AlbiwareProjectCreator:
             # 2. Project Type - Use Kendo API directly
             try:
                 logger.info("Selecting Project Type")
-                page.evaluate("""
-                    const projectType = document.querySelector('#ProjectTypeId');
-                    if (projectType && window.jQuery) {
+                result = page.evaluate("""
+                    (function() {
+                        const projectType = document.querySelector('#ProjectTypeId');
+                        if (!projectType || !window.jQuery) {
+                            return {success: false, error: 'Element or jQuery not found'};
+                        }
                         const kendoWidget = jQuery(projectType).data('kendoDropDownList');
                         if (kendoWidget) {
                             kendoWidget.value('1');  // Emergency Mitigation Services
                             kendoWidget.trigger('change');
+                            return {success: true, value: kendoWidget.value()};
                         }
-                    }
+                        return {success: false, error: 'Kendo widget not found'};
+                    })()
                 """)
+                if not result.get('success'):
+                    logger.error(f"✗ Failed to select Project Type: {result.get('error')}")
+                    return False
                 time.sleep(1)
-                logger.info("✓ Project Type selected")
+                logger.info(f"✓ Project Type selected: {result.get('value')}")
             except Exception as e:
                 logger.error(f"✗ Failed to select Project Type: {e}")
+                return False
             
             # 3. Property Type - Use Kendo ComboBox API
             if contact.property_type:
                 try:
                     logger.info(f"Selecting Property Type: {contact.property_type}")
-                    page.evaluate(f"""
-                        const propertyType = document.querySelector('#PropertyType');
-                        if (propertyType && window.jQuery) {{
+                    result = page.evaluate(f"""
+                        (function() {{
+                            const propertyType = document.querySelector('#PropertyType');
+                            if (!propertyType || !window.jQuery) {{
+                                return {{success: false, error: 'Element or jQuery not found'}};
+                            }}
                             const kendoWidget = jQuery(propertyType).data('kendoComboBox');
                             if (kendoWidget) {{
                                 kendoWidget.value('{contact.property_type}');
                                 kendoWidget.trigger('change');
+                                return {{success: true, value: kendoWidget.value()}};
                             }}
-                        }}
+                            return {{success: false, error: 'Kendo widget not found'}};
+                        }})()
                     """)
+                    if not result.get('success'):
+                        logger.error(f"✗ Failed to select Property Type: {result.get('error')}")
+                        return False
                     time.sleep(1)
-                    logger.info(f"✓ Property Type selected: {contact.property_type}")
+                    logger.info(f"✓ Property Type selected: {result.get('value')}")
                 except Exception as e:
                     logger.error(f"✗ Failed to select Property Type: {e}")
+                    return False
             
             # 4. Location - Already defaulted to Main Office, skip
             
