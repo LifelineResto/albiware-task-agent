@@ -173,6 +173,33 @@ class AlbiwareProjectCreator:
                 page.wait_for_selector('form', timeout=10000)
                 logger.info("Form element found")
             
+            # Wait for Kendo widgets to initialize
+            logger.info("Waiting for Kendo widgets to initialize...")
+            time.sleep(3)  # Give Kendo time to initialize all widgets
+            
+            # Verify critical widgets are initialized
+            widgets_ready = page.evaluate("""
+                (function() {
+                    if (!window.jQuery) return {ready: false, error: 'jQuery not loaded'};
+                    
+                    const customerOption = jQuery('#CustomerOption').data('kendoDropDownList');
+                    const projectType = jQuery('#ProjectTypeId').data('kendoDropDownList');
+                    const propertyType = jQuery('#PropertyType').data('kendoComboBox');
+                    
+                    return {
+                        ready: !!(customerOption && projectType && propertyType),
+                        customerOption: !!customerOption,
+                        projectType: !!projectType,
+                        propertyType: !!propertyType
+                    };
+                })()
+            """)
+            logger.info(f"Kendo widgets status: {widgets_ready}")
+            
+            if not widgets_ready.get('ready'):
+                logger.warning("Some Kendo widgets not initialized, waiting longer...")
+                time.sleep(5)
+            
             return True
             
         except Exception as e:
