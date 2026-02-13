@@ -226,16 +226,23 @@ class AlbiwareProjectCreator:
                 """)
                 time.sleep(1)  # Wait for customer field to appear
                 
-                # Step 2: Click on the Select2 container to open dropdown
+                # Step 2: Click on the CUSTOMER Select2 container (not the Option dropdown)
                 logger.info("Opening customer Select2 dropdown")
                 try:
-                    # Find the Select2 container span and click it
-                    select2_container = page.locator('.select2-selection').first
+                    # Find the customer field's Select2 container using the parent select element
+                    # This ensures we get the SECOND Select2 (customer), not the first (option)
+                    customer_select = page.locator('select[name="ProjectCustomer.ExistingOrganizationContactIds"]')
+                    customer_select.wait_for(state='attached', timeout=5000)
+                    logger.info("Found customer select element")
+                    
+                    # Find the Select2 container that's associated with this select
+                    # Use nth(1) to get the SECOND .select2-selection on the page
+                    select2_container = page.locator('.select2-selection').nth(1)
                     select2_container.wait_for(state='visible', timeout=5000)
-                    logger.info("Found Select2 container, clicking to open...")
+                    logger.info("Found customer Select2 container (2nd one), clicking to open...")
                     select2_container.click()
                     time.sleep(1.5)  # Wait for dropdown to fully open
-                    logger.info("Clicked Select2 container")
+                    logger.info("Clicked customer Select2 container")
                 except Exception as e:
                     logger.error(f"Failed to click Select2 container: {e}")
                     # Fallback: try jQuery method
