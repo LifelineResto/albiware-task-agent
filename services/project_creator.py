@@ -225,19 +225,24 @@ class AlbiwareProjectCreator:
                     }
                 """)
                 logger.info("Waiting for customer field to appear after selecting Add Existing...")
+                time.sleep(3)  # Give more time for the field to appear
                 
                 # Step 2: Wait for the customer Select2 field to appear, then click it
                 logger.info("Opening customer Select2 dropdown")
                 try:
                     # Wait for the customer select element to be added to the DOM
                     customer_select = page.locator('select[name="ProjectCustomer.ExistingOrganizationContactIds"]')
-                    customer_select.wait_for(state='attached', timeout=10000)
+                    customer_select.wait_for(state='attached', timeout=15000)
                     logger.info("Customer select element found in DOM")
+                    
+                    # Count how many Select2 containers exist
+                    select2_count = page.locator('.select2-selection').count()
+                    logger.info(f"Found {select2_count} Select2 containers on page")
                     
                     # Now wait for its Select2 container to be visible
                     # This is the SECOND .select2-selection on the page (first is the Option dropdown)
                     select2_container = page.locator('.select2-selection').nth(1)
-                    select2_container.wait_for(state='visible', timeout=10000)
+                    select2_container.wait_for(state='visible', timeout=15000)
                     logger.info("Found customer Select2 container (2nd one), clicking to open...")
                     select2_container.click()
                     time.sleep(1.5)  # Wait for dropdown to fully open
