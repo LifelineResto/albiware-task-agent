@@ -617,6 +617,34 @@ async def debug_query(db: Session = Depends(get_db)):
         return {"error": str(e)}
 
 
+@app.get("/api/admin/project-creation-logs")
+async def get_project_creation_logs(limit: int = 10, db: Session = Depends(get_db)):
+    """
+    ADMIN ENDPOINT: Get recent project creation logs
+    """
+    try:
+        logs = db.query(ProjectCreationLog).order_by(ProjectCreationLog.started_at.desc()).limit(limit).all()
+        
+        return {
+            "count": len(logs),
+            "logs": [
+                {
+                    "id": log.id,
+                    "contact_id": log.contact_id,
+                    "status": log.status,
+                    "error_message": log.error_message,
+                    "albiware_project_id": log.albiware_project_id,
+                    "started_at": log.started_at.isoformat() if log.started_at else None,
+                    "completed_at": log.completed_at.isoformat() if log.completed_at else None,
+                    "screenshot_path": log.screenshot_path
+                }
+                for log in logs
+            ]
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+
 @app.post("/api/admin/update-contact-albiware-id")
 async def update_contact_albiware_id(
     contact_id: int,
