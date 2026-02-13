@@ -380,6 +380,26 @@ class AlbiwareProjectCreator:
             submit_button.click()
             logger.info("Clicked submit button")
             
+            # Wait a moment for form submission
+            time.sleep(2)
+            
+            # Check for validation errors
+            try:
+                validation_errors = page.locator('.field-validation-error, .validation-summary-errors li').all_text_contents()
+                if validation_errors:
+                    error_msg = f"Form validation errors: {validation_errors}"
+                    logger.error(error_msg)
+                    # Take screenshot for debugging
+                    screenshot_path = f"/tmp/validation_error_{int(time.time())}.png"
+                    page.screenshot(path=screenshot_path)
+                    logger.error(f"Screenshot saved to {screenshot_path}")
+                    raise Exception(error_msg)
+            except Exception as e:
+                if "validation" in str(e).lower():
+                    raise e
+                # No validation errors found, continue
+                pass
+            
             # Wait for redirect to project detail page
             logger.info("Waiting for redirect to project page...")
             page.wait_for_url("**/Project/*", timeout=30000)
