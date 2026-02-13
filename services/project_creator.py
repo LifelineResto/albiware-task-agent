@@ -208,6 +208,7 @@ class AlbiwareProjectCreator:
             
             # STEP 1: Customer - Select "Add Existing" then customer
             logger.info("STEP 1: Customer Information...")
+            page.wait_for_selector('select#CustomerOption', timeout=10000)
             page.locator('select#CustomerOption').select_option('AddExisting')
             time.sleep(3)
             
