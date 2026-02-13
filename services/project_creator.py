@@ -427,8 +427,26 @@ class AlbiwareProjectCreator:
                         errors = page.locator('.field-validation-error, .validation-summary-errors li, .alert-danger').all_text_contents()
                         if errors:
                             logger.error(f"Validation errors found: {errors}")
-                    except:
-                        pass
+                        else:
+                            logger.error("No visible validation errors found")
+                        
+                        # Log form field values for debugging
+                        form_state = page.evaluate("""
+                            () => {
+                                return {
+                                    customerOption: document.querySelector('#CustomerOption')?.value,
+                                    projectType: document.querySelector('#ProjectTypeId')?.value,
+                                    propertyType: document.querySelector('#PropertyType')?.value,
+                                    location: document.querySelector('#LocationId')?.value,
+                                    insurance: document.querySelector('#CoveredLoss')?.value,
+                                    staff: document.querySelector('#StaffId')?.value,
+                                    customerSelectValue: document.querySelector('select[name="ProjectCustomer.ExistingOrganizationContactIds"]')?.value
+                                };
+                            }
+                        """)
+                        logger.error(f"Form state at timeout: {form_state}")
+                    except Exception as e:
+                        logger.error(f"Error checking validation: {e}")
                 raise
             
             current_url = page.url
