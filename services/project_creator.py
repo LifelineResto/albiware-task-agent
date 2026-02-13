@@ -181,8 +181,11 @@ class AlbiwareProjectCreator:
         try:
             logger.info("Navigating to project creation...")
             page.goto(f"{self.albiware_url}/Project/New", wait_until="domcontentloaded", timeout=30000)
+            logger.info(f"Loaded URL: {page.url}")
+            logger.info(f"Page title: {page.title()}")
             
             # Wait for form to load - check for key form elements
+            logger.info("Waiting for CustomerOption selector...")
             page.wait_for_selector('select#CustomerOption', timeout=15000)
             logger.info("Project creation form loaded")
             
@@ -193,12 +196,9 @@ class AlbiwareProjectCreator:
             
         except Exception as e:
             logger.error(f"Navigation error: {e}")
-            # Take screenshot for debugging
-            try:
-                page.screenshot(path="/tmp/nav_error.png")
-                logger.error("Screenshot saved to /tmp/nav_error.png")
-            except:
-                pass
+            logger.error(f"Current URL: {page.url}")
+            import traceback
+            logger.error(traceback.format_exc())
             return False
     
     def _fill_project_form(self, page: Page, contact: Contact) -> bool:
