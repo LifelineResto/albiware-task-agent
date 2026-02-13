@@ -92,7 +92,10 @@ class AlbiwareProjectCreator:
                         raise Exception("Could not verify project creation")
                 
                 except Exception as e:
+                    import traceback
+                    error_details = traceback.format_exc()
                     logger.error(f"Error during browser automation: {e}")
+                    logger.error(f"Full traceback:\n{error_details}")
                     
                     # Take screenshot for debugging
                     try:
@@ -103,7 +106,7 @@ class AlbiwareProjectCreator:
                         pass
                     
                     log.status = 'failed'
-                    log.error_message = str(e)
+                    log.error_message = f"{str(e)}\n\nTraceback:\n{error_details}"
                     log.completed_at = datetime.utcnow()
                     db.commit()
                     return False
