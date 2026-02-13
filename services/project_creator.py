@@ -57,8 +57,12 @@ class AlbiwareProjectCreator:
                 
                 try:
                     # Login
-                    if not self._login(page):
-                        raise Exception("Could not log in to Albiware")
+                    login_result = self._login(page)
+                    if not login_result:
+                        # Get page content for debugging
+                        page_url = page.url
+                        page_title = page.title()
+                        raise Exception(f"Could not log in to Albiware. Current URL: {page_url}, Title: {page_title}")
                     
                     # Navigate to project creation
                     if not self._navigate_to_create_project(page):
