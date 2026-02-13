@@ -212,8 +212,8 @@ class AlbiwareProjectCreator:
                     logger.warning(f"Could not select {label_text}: {e}")
                     return False
             
-            # 1. Customer - First select "Add Existing" option
-            logger.info(f"Selecting customer: {contact.full_name}")
+            # 1. Customer - Use JavaScript to directly set the customer value
+            logger.info(f"Selecting customer: {contact.full_name} (Albiware ID: {contact.albiware_contact_id})")
             try:
                 # Step 1: Select "Add Existing" from CustomerOption dropdown
                 logger.info("Setting CustomerOption to Add Existing")
@@ -224,90 +224,56 @@ class AlbiwareProjectCreator:
                         customerOption.dispatchEvent(new Event('change', { bubbles: true }));
                     }
                 """)
-                logger.info("Waiting for customer field to appear after selecting Add Existing...")
-                time.sleep(3)  # Give more time for the field to appear
+                logger.info("Waiting for customer field to appear...")
+                time.sleep(4)  # Wait for the customer field to be added to DOM
                 
-                # Step 2: Wait for the customer Select2 field to appear, then click it
-                logger.info("Opening customer Select2 dropdown")
-                try:
-                    # Wait for the customer select element to be added to the DOM
-                    customer_select = page.locator('select[name="ProjectCustomer.ExistingOrganizationContactIds"]')
-                    customer_select.wait_for(state='attached', timeout=15000)
-                    logger.info("Customer select element found in DOM")
-                    
-                    # Count how many Select2 containers exist
-                    select2_count = page.locator('.select2-selection').count()
-                    logger.info(f"Found {select2_count} Select2 containers on page")
-                    
-                    # Now wait for its Select2 container to be visible
-                    # This is the SECOND .select2-selection on the page (first is the Option dropdown)
-                    select2_container = page.locator('.select2-selection').nth(1)
-                    select2_container.wait_for(state='visible', timeout=15000)
-                    logger.info("Found customer Select2 container (2nd one), clicking to open...")
-                    select2_container.click()
-                    time.sleep(1.5)  # Wait for dropdown to fully open
-                    logger.info("Clicked customer Select2 container")
-                except Exception as e:
-                    logger.error(f"Failed to click Select2 container: {e}")
-                    # Fallback: try jQuery method
-                    logger.info("Trying jQuery fallback...")
-                    page.evaluate("""
-                        const customerSelect = document.querySelector('select[name="ProjectCustomer.ExistingOrganizationContactIds"]');
-                        if (customerSelect && window.jQuery) {
-                            jQuery(customerSelect).select2('open');
-                        }
-                    """)
-                    time.sleep(1)
+                # Step 2: Use JavaScript to directly set the Select2 value
+                logger.info(f"Setting customer Select2 value to {contact.albiware_contact_id}")
+                result = page.evaluate(f"""
+                    (function() {{
+                        try {{
+                            // Wait for Select2 to be initialized
+                            const customerSelect = document.querySelector('select[name="ProjectCustomer.ExistingOrganizationContactIds"]');
+                            if (!customerSelect) {{
+                                return {{ success: false, error: 'Customer select element not found' }};
+                            }}
+                            
+                            // Check if jQuery and Select2 are available
+                            if (typeof jQuery === 'undefined' || typeof jQuery.fn.select2 === 'undefined') {{
+                                return {{ success: false, error: 'jQuery or Select2 not available' }};
+                            }}
+                            
+                            // Create a new option with the contact ID and name
+                            const contactId = '{contact.albiware_contact_id}';
+                            const contactName = '{contact.full_name}';
+                            
+                            // Add the option if it doesn't exist
+                            const $select = jQuery(customerSelect);
+                            if ($select.find(`option[value="${{contactId}}"]`).length === 0) {{
+                                const newOption = new Option(contactName, contactId, true, true);
+                                $select.append(newOption);
+                            }} else {{
+                                $select.val(contactId);
+                            }}
+                            
+                            // Trigger change event
+                            $select.trigger('change');
+                            
+                            return {{ success: true, value: contactId, name: contactName }};
+                        }} catch (e) {{
+                            return {{ success: false, error: e.toString() }};
+                        }}
+                    }})()
+                """)
                 
-                # Step 3: Type customer name in the search box
-                logger.info(f"Typing customer name: {contact.full_name}")
-                logger.info("Waiting for search input field...")
+                logger.info(f"JavaScript result: {result}")
                 
-                # Try to find the search input with multiple strategies
-                try:
-                    search_input = page.locator('.select2-search__field').first
-                    search_input.wait_for(state='visible', timeout=10000)
-                    logger.info("Search field found")
-                except Exception as e:
-                    logger.error(f"Search field not found: {e}")
-                    # Try alternative selector
-                    logger.info("Trying alternative search field selector...")
-                    search_input = page.locator('input[type="search"]').first
-                    search_input.wait_for(state='visible', timeout=5000)
+                if not result.get('success'):
+                    raise Exception(f"Failed to set customer value: {result.get('error')}")
                 
-                # Type slowly to trigger search
-                search_input.type(contact.full_name, delay=100)  # 100ms delay between keystrokes
-                logger.info(f"Typed '{contact.full_name}' into search field")
+                time.sleep(1)
+                logger.info(f"Customer selected successfully: {result.get('name')}")
                 
-                # Step 4: Wait for search results to load
-                logger.info("Waiting for search results to load...")
-                time.sleep(3)  # Longer wait for search to complete
-                
-                logger.info("Checking search results...")
-                
-                # Log all available options for debugging
-                try:
-                    options = page.locator('.select2-results__option').all_text_contents()
-                    logger.info(f"Available options: {options}")
-                except:
-                    pass
-                
-                logger.info("Clicking customer from results")
-                # Try multiple selector strategies
-                try:
-                    # Strategy 1: Exact text match, exclude "Choose One"
-                    result_item = page.locator(f'.select2-results__option:not([aria-disabled="true"]):has-text("{contact.full_name}")').first
-                    result_item.wait_for(state='visible', timeout=10000)
-                    result_item.click()
-                except:
-                    # Strategy 2: Contains text
-                    logger.info("Trying alternative selector...")
-                    result_item = page.locator(f'.select2-results__option').filter(has_text=contact.full_name).nth(0)
-                    result_item.wait_for(state='visible', timeout=10000)
-                    result_item.click()
-                
-                time.sleep(0.5)
-                logger.info("Customer selected successfully")
                 
             except Exception as e:
                 logger.error(f"Failed to select customer: {e}")
