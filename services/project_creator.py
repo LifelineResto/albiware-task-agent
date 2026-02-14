@@ -281,17 +281,25 @@ class AlbiwareProjectCreator:
             # STEP 4: Property Type (regular select)
             logger.info("STEP 4: Property Type...")
             prop_type = contact.property_type if contact.property_type else "Residential"
-            page.select_option('#PropertyType', label=prop_type)
-            time.sleep(1)
-            logger.info(f"✓ Property Type set to {prop_type}")
+            try:
+                page.wait_for_selector('#PropertyType', state='visible', timeout=10000)
+                page.select_option('#PropertyType', label=prop_type, timeout=10000)
+                time.sleep(1)
+                logger.info(f"✓ Property Type set to {prop_type}")
+            except Exception as e:
+                raise Exception(f"Property Type failed: {str(e)}")
             
             # STEP 5: Insurance Info (regular select - CoveredLoss)
             logger.info("STEP 5: Insurance Info...")
             has_ins = contact.has_insurance if contact.has_insurance is not None else False
             ins_val = "Yes" if has_ins else "No"
-            page.select_option('#CoveredLoss', label=ins_val)
-            time.sleep(2)
-            logger.info(f"✓ Insurance Info set to {ins_val}")
+            try:
+                page.wait_for_selector('#CoveredLoss', state='visible', timeout=10000)
+                page.select_option('#CoveredLoss', label=ins_val, timeout=10000)
+                time.sleep(2)
+                logger.info(f"✓ Insurance Info set to {ins_val}")
+            except Exception as e:
+                raise Exception(f"Insurance Info failed: {str(e)}")
             
             # STEP 6: Insurance Company (if has insurance)
             if has_ins and contact.insurance_company:
@@ -302,27 +310,43 @@ class AlbiwareProjectCreator:
             
             # STEP 7: Referrer Option - Add Existing (regular select)
             logger.info("STEP 7: Referrer Option...")
-            page.select_option('#ReferrerOption', label='Add Existing')
-            time.sleep(1)
-            logger.info("✓ Referrer Option set")
+            try:
+                page.wait_for_selector('#ReferrerOption', state='visible', timeout=10000)
+                page.select_option('#ReferrerOption', label='Add Existing', timeout=10000)
+                time.sleep(1)
+                logger.info("✓ Referrer Option set")
+            except Exception as e:
+                raise Exception(f"Referrer Option failed: {str(e)}")
             
             # STEP 8: Referral Sources - Lead Gen (regular select)
             logger.info("STEP 8: Referral Sources...")
-            page.select_option('#ProjectReferrer_ReferralSourceId', label='Lead Gen')
-            time.sleep(1)
-            logger.info("✓ Referral Sources set to Lead Gen")
+            try:
+                page.wait_for_selector('#ProjectReferrer_ReferralSourceId', state='visible', timeout=10000)
+                page.select_option('#ProjectReferrer_ReferralSourceId', label='Lead Gen', timeout=10000)
+                time.sleep(1)
+                logger.info("✓ Referral Sources set to Lead Gen")
+            except Exception as e:
+                raise Exception(f"Referral Sources failed: {str(e)}")
             
             # STEP 9: Staff - Rodolfo Arceo (regular select)
             logger.info("STEP 9: Staff...")
-            page.select_option('#StaffId', label='Rodolfo Arceo')
-            time.sleep(1)
-            logger.info("✓ Staff set to Rodolfo Arceo")
+            try:
+                page.wait_for_selector('#StaffId', state='visible', timeout=10000)
+                page.select_option('#StaffId', label='Rodolfo Arceo', timeout=10000)
+                time.sleep(1)
+                logger.info("✓ Staff set to Rodolfo Arceo")
+            except Exception as e:
+                raise Exception(f"Staff failed: {str(e)}")
             
             # STEP 10: Project Roles - Estimator (regular select)
             logger.info("STEP 10: Project Roles...")
-            page.select_option('#ProjectRoleId', label='Estimator')
-            time.sleep(1)
-            logger.info("✓ Project Roles set to Estimator")
+            try:
+                page.wait_for_selector('#ProjectRoleId', state='visible', timeout=10000)
+                page.select_option('#ProjectRoleId', label='Estimator', timeout=10000)
+                time.sleep(1)
+                logger.info("✓ Project Roles set to Estimator")
+            except Exception as e:
+                raise Exception(f"Project Roles failed: {str(e)}")
             
             logger.info("✅ Form filling complete!")
             return True
