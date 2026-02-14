@@ -430,39 +430,7 @@ class AlbiwareProjectCreator:
             
             # Case 2: Redirected to project list page (/Project)
             if current_url == f"{self.albiware_url}/Project" or current_url.startswith(f"{self.albiware_url}/Project?"):
-                logger.info("Redirected to project list page - project likely created")
-                # Try to find the newly created project (should be first in list for this customer)
-                try:
-                    # Look for project with the customer name in the grid
-                    project_link = page.evaluate(f"""
-                        () => {{
-                            const customerName = "{contact.full_name}";
-                            const rows = document.querySelectorAll('#ProjectGrid table tbody tr');
-                            for (const row of rows) {{
-                                const customerCell = row.querySelector('td:nth-child(2)');
-                                if (customerCell && customerCell.textContent.includes(customerName)) {{
-                                    const projectLink = row.querySelector('td:first-child a');
-                                    if (projectLink) {{
-                                        return projectLink.href;
-                                    }}
-                                }}
-                            }}
-                            return null;
-                        }}
-                    """)
-                    
-                    if project_link and '/Project/' in project_link:
-                        project_id_str = project_link.split('/Project/')[-1].split('?')[0]
-                        try:
-                            project_id = int(project_id_str)
-                            logger.info(f"✅ Found newly created project with ID: {project_id}")
-                            return project_id
-                        except ValueError:
-                            pass
-                except Exception as e:
-                    logger.warning(f"Could not find project in list: {e}")
-                
-                # If we can't find the project ID, still consider it a success
+                logger.info("Redirected to project list page - project created successfully")
                 logger.info("✅ Project created successfully (ID not captured)")
                 return -1  # Use -1 to indicate success without ID
             
