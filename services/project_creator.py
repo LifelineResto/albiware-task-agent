@@ -313,7 +313,7 @@ class AlbiwareProjectCreator:
             try:
                 page.wait_for_selector('#ReferrerOption', state='visible', timeout=10000)
                 page.select_option('#ReferrerOption', label='Add Existing', timeout=10000)
-                time.sleep(1)
+                time.sleep(3)  # Wait for Referral Sources field to appear
                 logger.info("✓ Referrer Option set")
             except Exception as e:
                 raise Exception(f"Referrer Option failed: {str(e)}")
