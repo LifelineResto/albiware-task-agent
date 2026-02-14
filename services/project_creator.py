@@ -168,10 +168,10 @@ class AlbiwareProjectCreator:
             page.wait_for_load_state("networkidle", timeout=15000)
             logger.info(f"After login URL: {page.url}")
             
-            # Verify login was successful - should redirect away from /login
-            if '/login' in page.url.lower():
-                logger.error(f"Login failed - still on login page: {page.url}")
-                logger.error(f"Page title: {page.title()}")
+            # Verify login was successful - check page title (Albiware does soft redirect)
+            page_title = page.title()
+            if page_title.lower() == 'login':
+                logger.error(f"Login failed - title still 'Login': {page.url}")
                 return False
             
             logger.info("Login successful")
