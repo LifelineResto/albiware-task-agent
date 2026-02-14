@@ -167,6 +167,13 @@ class AlbiwareProjectCreator:
             # Wait for navigation after login
             page.wait_for_load_state("networkidle", timeout=15000)
             logger.info(f"After login URL: {page.url}")
+            
+            # Verify login was successful - should redirect away from /login
+            if '/login' in page.url.lower():
+                logger.error(f"Login failed - still on login page: {page.url}")
+                logger.error(f"Page title: {page.title()}")
+                return False
+            
             logger.info("Login successful")
             return True
             
