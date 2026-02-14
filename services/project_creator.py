@@ -228,11 +228,27 @@ class AlbiwareProjectCreator:
             logger.info(f"Filling project form for {contact.full_name}...")
             time.sleep(3)  # Wait for page initialization
             
-            # STEP 1: Customer Option - Select "Add Existing"
+            # STEP 1: Customer Option - Select "Add Existing" (Select2 dropdown)
             logger.info("STEP 1: Customer Option...")
-            page.evaluate("$('#CustomerOption').val('AddExisting').trigger('change');")
+            result = page.evaluate("""
+                (function() {
+                    try {
+                        // CustomerOption is a Select2 dropdown
+                        // Options: "" (Choose One), "existing" (Add Existing), "new" (Create New)
+                        $('#CustomerOption').val('existing').trigger('change');
+                        
+                        // Verify it was set
+                        var value = $('#CustomerOption').val();
+                        return {success: true, value: value};
+                    } catch(e) {
+                        return {success: false, error: e.toString()};
+                    }
+                })()
+            """)
+            if not result.get('success'):
+                raise Exception(f"CustomerOption selection failed: {result.get('error')}")
+            logger.info(f"✓ Set to Add Existing (value: {result.get('value')})")
             time.sleep(2)
-            logger.info("✓ Set to Add Existing")
             
             # STEP 2: Select Customer
             logger.info(f"STEP 2: Selecting customer {contact.full_name}...")
