@@ -245,6 +245,10 @@ class AlbiwareProjectCreator:
             logger.info("✓ Customer selected")
             time.sleep(2)
             
+            # Debug: Log available select elements
+            selects = page.evaluate("Array.from(document.querySelectorAll('select')).map(s => ({id: s.id, name: s.name, label: s.previousElementSibling?.textContent || s.parentElement?.textContent}))")
+            logger.info(f"Available select elements: {selects}")
+            
             # STEP 2: Project Type - EMS
             logger.info("STEP 2: Project Type...")
             page.wait_for_selector('select#ProjectTypeId', timeout=10000)
