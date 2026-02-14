@@ -321,7 +321,8 @@ class AlbiwareProjectCreator:
             # STEP 8: Referral Sources - Lead Gen (regular select)
             logger.info("STEP 8: Referral Sources...")
             try:
-                page.wait_for_selector('#ProjectReferrer_ReferralSourceId', state='visible', timeout=10000)
+                # Wait longer for this field to appear after selecting Referrer Option
+                page.wait_for_selector('#ProjectReferrer_ReferralSourceId', state='visible', timeout=30000)
                 page.select_option('#ProjectReferrer_ReferralSourceId', label='Lead Gen', timeout=10000)
                 time.sleep(1)
                 logger.info("✓ Referral Sources set to Lead Gen")
