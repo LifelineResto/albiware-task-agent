@@ -168,10 +168,18 @@ class AlbiwareProjectCreator:
             page.wait_for_load_state("networkidle", timeout=15000)
             logger.info(f"After login URL: {page.url}")
             
+            # Wait a bit more for soft redirect to complete
+            time.sleep(3)
+            
             # Verify login was successful - check page title (Albiware does soft redirect)
             page_title = page.title()
+            logger.info(f"Page title after login: {page_title}")
             if page_title.lower() == 'login':
                 logger.error(f"Login failed - title still 'Login': {page.url}")
+                # Check for error messages
+                error_text = page.evaluate("document.querySelector('.alert-danger, .error')?.textContent || ''")
+                if error_text:
+                    logger.error(f"Login error message: {error_text}")
                 return False
             
             logger.info("Login successful")
