@@ -318,12 +318,23 @@ class AlbiwareProjectCreator:
             except Exception as e:
                 raise Exception(f"Referrer Option failed: {str(e)}")
             
-            # STEP 8: Referral Sources - Lead Gen (regular select)
+            # STEP 8: Referral Sources - Lead Gen (hidden select, use JavaScript)
             logger.info("STEP 8: Referral Sources...")
             try:
-                # Wait longer for this field to appear after selecting Referrer Option
-                page.wait_for_selector('#ProjectReferrer_ReferralSourceId', state='visible', timeout=30000)
-                page.select_option('#ProjectReferrer_ReferralSourceId', label='Lead Gen', timeout=10000)
+                # Field exists but is hidden, so use JavaScript to set value
+                page.wait_for_selector('#ProjectReferrer_ReferralSourceId', state='attached', timeout=10000)
+                result = page.evaluate("""
+                    (function() {
+                        try {
+                            $('#ProjectReferrer_ReferralSourceId').val('28704').trigger('change');
+                            return {success: true};
+                        } catch(e) {
+                            return {success: false, error: e.toString()};
+                        }
+                    })()
+                """)
+                if not result.get('success'):
+                    raise Exception(f"JavaScript failed: {result.get('error')}")
                 time.sleep(1)
                 logger.info("✓ Referral Sources set to Lead Gen")
             except Exception as e:
