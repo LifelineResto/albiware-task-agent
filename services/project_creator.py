@@ -278,56 +278,18 @@ class AlbiwareProjectCreator:
             time.sleep(1)
             logger.info("✓ Project Type set to EMS")
             
-            # STEP 4: Property Type
+            # STEP 4: Property Type (regular select)
             logger.info("STEP 4: Property Type...")
             prop_type = contact.property_type if contact.property_type else "Residential"
-            result = page.evaluate(f"""
-                (function() {{
-                    try {{
-                        var widget = $('#PropertyType').data('kendoDropDownList');
-                        if (!widget) return {{success: false, error: 'Widget not found'}};
-                        var data = widget.dataSource.data();
-                        var option = data.find(item => item.Text === '{prop_type}');
-                        if (option) {{
-                            widget.value(option.Value);
-                            widget.trigger('change');
-                            return {{success: true}};
-                        }}
-                        return {{success: false, error: 'Option not found'}};
-                    }} catch(e) {{
-                        return {{success: false, error: e.toString()}};
-                    }}
-                }})()
-            """)
-            if not result.get('success'):
-                raise Exception(f"Property Type failed: {result.get('error')}")
+            page.select_option('#PropertyType', label=prop_type)
             time.sleep(1)
             logger.info(f"✓ Property Type set to {prop_type}")
             
-            # STEP 5: Insurance Info
+            # STEP 5: Insurance Info (regular select - CoveredLoss)
             logger.info("STEP 5: Insurance Info...")
             has_ins = contact.has_insurance if contact.has_insurance is not None else False
             ins_val = "Yes" if has_ins else "No"
-            result = page.evaluate(f"""
-                (function() {{
-                    try {{
-                        var widget = $('#InsuranceInfo').data('kendoDropDownList');
-                        if (!widget) return {{success: false, error: 'Widget not found'}};
-                        var data = widget.dataSource.data();
-                        var option = data.find(item => item.Text === '{ins_val}');
-                        if (option) {{
-                            widget.value(option.Value);
-                            widget.trigger('change');
-                            return {{success: true}};
-                        }}
-                        return {{success: false, error: 'Option not found'}};
-                    }} catch(e) {{
-                        return {{success: false, error: e.toString()}};
-                    }}
-                }})()
-            """)
-            if not result.get('success'):
-                raise Exception(f"Insurance Info failed: {result.get('error')}")
+            page.select_option('#CoveredLoss', label=ins_val)
             time.sleep(2)
             logger.info(f"✓ Insurance Info set to {ins_val}")
             
@@ -338,103 +300,27 @@ class AlbiwareProjectCreator:
                 time.sleep(1)
                 logger.info(f"✓ Insurance Company: {contact.insurance_company}")
             
-            # STEP 7: Referrer Option - Add Existing
+            # STEP 7: Referrer Option - Add Existing (regular select)
             logger.info("STEP 7: Referrer Option...")
-            result = page.evaluate("""
-                (function() {
-                    try {
-                        var widget = $('#ReferrerOption').data('kendoDropDownList');
-                        if (!widget) return {success: false, error: 'Widget not found'};
-                        var data = widget.dataSource.data();
-                        var option = data.find(item => item.Text === 'Add Existing');
-                        if (option) {
-                            widget.value(option.Value);
-                            widget.trigger('change');
-                            return {success: true};
-                        }
-                        return {success: false, error: 'Option not found'};
-                    } catch(e) {
-                        return {success: false, error: e.toString()};
-                    }
-                })()
-            """)
-            if not result.get('success'):
-                raise Exception(f"Referrer Option failed: {result.get('error')}")
+            page.select_option('#ReferrerOption', label='Add Existing')
             time.sleep(1)
             logger.info("✓ Referrer Option set")
             
-            # STEP 8: Referral Sources - Lead Gen
+            # STEP 8: Referral Sources - Lead Gen (regular select)
             logger.info("STEP 8: Referral Sources...")
-            result = page.evaluate("""
-                (function() {
-                    try {
-                        var widget = $('#ReferralSourceId').data('kendoDropDownList');
-                        if (!widget) return {success: false, error: 'Widget not found'};
-                        var data = widget.dataSource.data();
-                        var option = data.find(item => item.Text === 'Lead Gen');
-                        if (option) {
-                            widget.value(option.Value);
-                            widget.trigger('change');
-                            return {success: true};
-                        }
-                        return {success: false, error: 'Option not found'};
-                    } catch(e) {
-                        return {success: false, error: e.toString()};
-                    }
-                })()
-            """)
-            if not result.get('success'):
-                raise Exception(f"Referral Sources failed: {result.get('error')}")
+            page.select_option('#ProjectReferrer_ReferralSourceId', label='Lead Gen')
             time.sleep(1)
             logger.info("✓ Referral Sources set to Lead Gen")
             
-            # STEP 9: Staff - Rodolfo Arceo
+            # STEP 9: Staff - Rodolfo Arceo (regular select)
             logger.info("STEP 9: Staff...")
-            result = page.evaluate("""
-                (function() {
-                    try {
-                        var widget = $('#StaffId').data('kendoDropDownList');
-                        if (!widget) return {success: false, error: 'Widget not found'};
-                        var data = widget.dataSource.data();
-                        var option = data.find(item => item.Text === 'Rodolfo Arceo');
-                        if (option) {
-                            widget.value(option.Value);
-                            widget.trigger('change');
-                            return {success: true};
-                        }
-                        return {success: false, error: 'Option not found'};
-                    } catch(e) {
-                        return {success: false, error: e.toString()};
-                    }
-                })()
-            """)
-            if not result.get('success'):
-                raise Exception(f"Staff failed: {result.get('error')}")
+            page.select_option('#StaffId', label='Rodolfo Arceo')
             time.sleep(1)
             logger.info("✓ Staff set to Rodolfo Arceo")
             
-            # STEP 10: Project Roles - Estimator
+            # STEP 10: Project Roles - Estimator (regular select)
             logger.info("STEP 10: Project Roles...")
-            result = page.evaluate("""
-                (function() {
-                    try {
-                        var widget = $('#ProjectRoleId').data('kendoMultiSelect');
-                        if (!widget) return {success: false, error: 'Widget not found'};
-                        var data = widget.dataSource.data();
-                        var option = data.find(item => item.Text === 'Estimator');
-                        if (option) {
-                            widget.value([option.Value]);
-                            widget.trigger('change');
-                            return {success: true};
-                        }
-                        return {success: false, error: 'Option not found'};
-                    } catch(e) {
-                        return {success: false, error: e.toString()};
-                    }
-                })()
-            """)
-            if not result.get('success'):
-                raise Exception(f"Project Roles failed: {result.get('error')}")
+            page.select_option('#ProjectRoleId', label='Estimator')
             time.sleep(1)
             logger.info("✓ Project Roles set to Estimator")
             
