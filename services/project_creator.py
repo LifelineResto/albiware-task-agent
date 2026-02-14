@@ -215,7 +215,9 @@ class AlbiwareProjectCreator:
             
             # STEP 1: Customer - Select "Add Existing" then customer
             logger.info("STEP 1: Customer Information...")
-            page.wait_for_selector('select#CustomerOption', timeout=10000)
+            page.wait_for_selector('select#CustomerOption', state='visible', timeout=10000)
+            # Wait for element to be enabled (Kendo initialization)
+            page.wait_for_function("document.querySelector('select#CustomerOption') && !document.querySelector('select#CustomerOption').disabled", timeout=10000)
             page.locator('select#CustomerOption').select_option('AddExisting')
             time.sleep(3)
             
