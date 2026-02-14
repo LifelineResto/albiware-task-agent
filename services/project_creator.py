@@ -73,7 +73,7 @@ class AlbiwareProjectCreator:
                     logger.info("Form filled successfully")
                     
                     # Submit and verify
-                    project_id = self._submit_and_verify(page)
+                    project_id = self._submit_and_verify(page, contact)
                     
                     if project_id:
                         # Success!
@@ -370,7 +370,7 @@ class AlbiwareProjectCreator:
             raise Exception(f"Form filling failed: {str(e)}")
 
 
-    def _submit_and_verify(self, page: Page) -> Optional[int]:
+    def _submit_and_verify(self, page: Page, contact: Contact) -> Optional[int]:
         """Submit the form and verify project was created"""
         try:
             logger.info("Submitting project form...")
