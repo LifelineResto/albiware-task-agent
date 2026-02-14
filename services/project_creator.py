@@ -216,7 +216,232 @@ class AlbiwareProjectCreator:
             logger.error(traceback.format_exc())
             return False
     
-    def _fill_project_form(self, page: Page, contact: Contact):        """Fill the project creation form"""        try:            logger.info("Starting form fill...")            time.sleep(3)  # Wait for page to fully load                        # STEP 1: Customer Option - Select "Add Existing" using Select2            logger.info("STEP 1: Customer Option - Add Existing...")            page.evaluate("""                $('#CustomerOption').val('AddExisting').trigger('change');            """)            time.sleep(2)            logger.info("✓ Customer Option set to Add Existing")                        # STEP 2: Select Customer using Select2            logger.info(f"STEP 2: Selecting customer {contact.full_name} (ID: {contact.albiware_contact_id})...")            result = page.evaluate(f"""                (function() {{                    try {{                        // Find the Select2 for customer selection                        var $select = $('select[name="ProjectCustomer.ExistingOrganizationContactIds"]');                                                // Create option with contact ID and name                        var option = new Option("{contact.full_name}", "{contact.albiware_contact_id}", true, true);                        $select.append(option).trigger('change');                                                return {{success: true}};                    }} catch(e) {{                        return {{success: false, error: e.toString()}};                    }}                }})()            """)            if not result.get('success'):                raise Exception(f"Customer selection failed: {result.get('error')}")            time.sleep(2)            logger.info("✓ Customer selected")                        # STEP 3: Project Type - Use Kendo API            logger.info("STEP 3: Project Type - Emergency Mitigation Services (EMS)...")            project_type_value = "Emergency Mitigation Services (EMS)"            result = page.evaluate(f"""                (function() {{                    try {{                        // Find the Kendo DropDownList for Project Type                        var dropdown = $('[aria-labelledby="ProjectTypeId_label"]').data('kendoDropDownList');                        if (!dropdown) {{                            return {{success: false, error: 'Kendo dropdown not found'}};                        }}                                                // Select by text                        dropdown.select(function(dataItem) {{                            return dataItem.text === "{project_type_value}";                        }});                        dropdown.trigger('change');                                                return {{success: true}};                    }} catch(e) {{                        return {{success: false, error: e.toString()}};                    }}                }})()            """)            if not result.get('success'):                raise Exception(f"Project Type selection failed: {result.get('error')}")            time.sleep(1)            logger.info("✓ Project Type set")                        # STEP 4: Property Type - Use select element directly            logger.info(f"STEP 4: Property Type - {contact.property_type}...")            page.evaluate(f"""                $('#PropertyType').val('{contact.property_type}').trigger('change');            """)            time.sleep(1)            logger.info("✓ Property Type set")                        # STEP 5: Insurance Info            logger.info(f"STEP 5: Insurance Info - {'Yes' if contact.has_insurance else 'No'}...")            insurance_value = 'Yes' if contact.has_insurance else 'No'            result = page.evaluate(f"""                (function() {{                    try {{                        // Find Insurance Info Kendo dropdown                        var dropdown = $('[aria-label*="Insurance"]').closest('.form-group').find('[role="listbox"]').data('kendoDropDownList');                        if (!dropdown) {{                            // Try alternative selector                            dropdown = $('select[name*="Insurance"]').data('kendoDropDownList');                        }}                        if (!dropdown) {{                            return {{success: false, error: 'Insurance dropdown not found'}};                        }}                                                dropdown.select(function(dataItem) {{                            return dataItem.text === "{insurance_value}";                        }});                        dropdown.trigger('change');                                                return {{success: true}};                    }} catch(e) {{                        return {{success: false, error: e.toString()}};                    }}                }})()            """)            if not result.get('success'):                raise Exception(f"Insurance Info selection failed: {result.get('error')}")            time.sleep(1)            logger.info("✓ Insurance Info set")                        # STEP 6: Insurance Company (if has insurance)            if contact.has_insurance and contact.insurance_company:                logger.info(f"STEP 6: Insurance Company - {contact.insurance_company}...")                page.fill('input[name*="InsuranceCompany"]', contact.insurance_company)                time.sleep(1)                logger.info("✓ Insurance Company set")                        # STEP 7: Referrer Option - Add Existing            logger.info("STEP 7: Referrer Option - Add Existing...")            result = page.evaluate("""                (function() {                    try {                        // Find Referrer Option dropdown in Referrer Information section                        var dropdown = $('#ReferrerInformation').find('[role="listbox"]').first().data('kendoDropDownList');                        if (!dropdown) {                            return {success: false, error: 'Referrer Option dropdown not found'};                        }                                                dropdown.select(function(dataItem) {                            return dataItem.text === "Add Existing";                        });                        dropdown.trigger('change');                                                return {success: true};                    } catch(e) {                        return {success: false, error: e.toString()};                    }                })()            """)            if not result.get('success'):                raise Exception(f"Referrer Option selection failed: {result.get('error')}")            time.sleep(1)            logger.info("✓ Referrer Option set")                        # STEP 8: Referral Sources - Lead Gen            logger.info("STEP 8: Referral Sources - Lead Gen...")            result = page.evaluate("""                (function() {                    try {                        // Find Referral Sources dropdown                        var dropdown = $('label:contains("Referral Sources")').next().find('[role="listbox"]').data('kendoDropDownList');                        if (!dropdown) {                            return {success: false, error: 'Referral Sources dropdown not found'};                        }                                                dropdown.select(function(dataItem) {                            return dataItem.text === "Lead Gen";                        });                        dropdown.trigger('change');                                                return {success: true};                    } catch(e) {                        return {success: false, error: e.toString()};                    }                })()            """)            if not result.get('success'):                raise Exception(f"Referral Sources selection failed: {result.get('error')}")            time.sleep(1)            logger.info("✓ Referral Sources set")                        # STEP 9: Staff - Rodolfo Arceo            logger.info("STEP 9: Staff - Rodolfo Arceo...")            result = page.evaluate("""                (function() {                    try {                        // Find Staff dropdown                        var dropdown = $('label:contains("Staff")').next().find('[role="listbox"]').data('kendoDropDownList');                        if (!dropdown) {                            return {success: false, error: 'Staff dropdown not found'};                        }                                                dropdown.select(function(dataItem) {                            return dataItem.text === "Rodolfo Arceo";                        });                        dropdown.trigger('change');                                                return {success: true};                    } catch(e) {                        return {success: false, error: e.toString()};                    }                })()            """)            if not result.get('success'):                raise Exception(f"Staff selection failed: {result.get('error')}")            time.sleep(1)            logger.info("✓ Staff set")                        # STEP 10: Project Roles - Estimator            logger.info("STEP 10: Project Roles - Estimator...")            result = page.evaluate("""                (function() {                    try {                        // Find Project Roles multiselect                        var multiselect = $('label:contains("Project Roles")').next().find('[role="combobox"]').data('kendoMultiSelect');                        if (!multiselect) {                            return {success: false, error: 'Project Roles multiselect not found'};                        }                                                // Find Estimator in the data source                        var dataSource = multiselect.dataSource;                        var estimatorItem = dataSource.data().find(item => item.text === "Estimator");                        if (estimatorItem) {                            multiselect.value([estimatorItem.value]);                            multiselect.trigger('change');                        }                                                return {success: true};                    } catch(e) {                        return {success: false, error: e.toString()};                    }                })()            """)            if not result.get('success'):                raise Exception(f"Project Roles selection failed: {result.get('error')}")            time.sleep(1)            logger.info("✓ Project Roles set")                        logger.info("Form filling complete!")            return True                    except Exception as e:            logger.error(f"Form filling error: {str(e)}")            raise Exception(f"Form filling failed: {str(e)}")    
+    def _fill_project_form(self, page: Page, contact: Contact) -> bool:
+        """Fill out the project creation form using Kendo API"""
+        try:
+            logger.info(f"Filling project form for {contact.full_name}...")
+            time.sleep(3)  # Wait for page initialization
+            
+            # STEP 1: Customer Option - Select "Add Existing"
+            logger.info("STEP 1: Customer Option...")
+            page.evaluate("$('#CustomerOption').val('AddExisting').trigger('change');")
+            time.sleep(2)
+            logger.info("✓ Set to Add Existing")
+            
+            # STEP 2: Select Customer
+            logger.info(f"STEP 2: Selecting customer {contact.full_name}...")
+            result = page.evaluate(f"""
+                (function() {{
+                    try {{
+                        var $select = $('select[name="ProjectCustomer.ExistingOrganizationContactIds"]');
+                        var option = new Option("{contact.full_name}", "{contact.albiware_contact_id}", true, true);
+                        $select.append(option).trigger('change');
+                        return {{success: true}};
+                    }} catch(e) {{
+                        return {{success: false, error: e.toString()}};
+                    }}
+                }})()
+            """)
+            if not result.get('success'):
+                raise Exception(f"Customer selection failed: {result.get('error')}")
+            time.sleep(2)
+            logger.info("✓ Customer selected")
+            
+            # STEP 3: Project Type - EMS
+            logger.info("STEP 3: Project Type...")
+            result = page.evaluate("""
+                (function() {
+                    try {
+                        var widget = $('#ProjectTypeId').data('kendoDropDownList');
+                        if (!widget) return {success: false, error: 'Widget not found'};
+                        var data = widget.dataSource.data();
+                        var emsOption = data.find(item => item.Text && item.Text.includes('Emergency Mitigation'));
+                        if (emsOption) {
+                            widget.value(emsOption.Value);
+                            widget.trigger('change');
+                            return {success: true};
+                        }
+                        return {success: false, error: 'EMS option not found'};
+                    } catch(e) {
+                        return {success: false, error: e.toString()};
+                    }
+                })()
+            """)
+            if not result.get('success'):
+                raise Exception(f"Project Type failed: {result.get('error')}")
+            time.sleep(1)
+            logger.info("✓ Project Type set to EMS")
+            
+            # STEP 4: Property Type
+            logger.info("STEP 4: Property Type...")
+            prop_type = contact.property_type if contact.property_type else "Residential"
+            result = page.evaluate(f"""
+                (function() {{
+                    try {{
+                        var widget = $('#PropertyType').data('kendoDropDownList');
+                        if (!widget) return {{success: false, error: 'Widget not found'}};
+                        var data = widget.dataSource.data();
+                        var option = data.find(item => item.Text === '{prop_type}');
+                        if (option) {{
+                            widget.value(option.Value);
+                            widget.trigger('change');
+                            return {{success: true}};
+                        }}
+                        return {{success: false, error: 'Option not found'}};
+                    }} catch(e) {{
+                        return {{success: false, error: e.toString()}};
+                    }}
+                }})()
+            """)
+            if not result.get('success'):
+                raise Exception(f"Property Type failed: {result.get('error')}")
+            time.sleep(1)
+            logger.info(f"✓ Property Type set to {prop_type}")
+            
+            # STEP 5: Insurance Info
+            logger.info("STEP 5: Insurance Info...")
+            has_ins = contact.has_insurance if contact.has_insurance is not None else False
+            ins_val = "Yes" if has_ins else "No"
+            result = page.evaluate(f"""
+                (function() {{
+                    try {{
+                        var widget = $('#InsuranceInfo').data('kendoDropDownList');
+                        if (!widget) return {{success: false, error: 'Widget not found'}};
+                        var data = widget.dataSource.data();
+                        var option = data.find(item => item.Text === '{ins_val}');
+                        if (option) {{
+                            widget.value(option.Value);
+                            widget.trigger('change');
+                            return {{success: true}};
+                        }}
+                        return {{success: false, error: 'Option not found'}};
+                    }} catch(e) {{
+                        return {{success: false, error: e.toString()}};
+                    }}
+                }})()
+            """)
+            if not result.get('success'):
+                raise Exception(f"Insurance Info failed: {result.get('error')}")
+            time.sleep(2)
+            logger.info(f"✓ Insurance Info set to {ins_val}")
+            
+            # STEP 6: Insurance Company (if has insurance)
+            if has_ins and contact.insurance_company:
+                logger.info(f"STEP 6: Insurance Company...")
+                page.fill('input#InsuranceCompany', contact.insurance_company)
+                time.sleep(1)
+                logger.info(f"✓ Insurance Company: {contact.insurance_company}")
+            
+            # STEP 7: Referrer Option - Add Existing
+            logger.info("STEP 7: Referrer Option...")
+            result = page.evaluate("""
+                (function() {
+                    try {
+                        var widget = $('#ReferrerOption').data('kendoDropDownList');
+                        if (!widget) return {success: false, error: 'Widget not found'};
+                        var data = widget.dataSource.data();
+                        var option = data.find(item => item.Text === 'Add Existing');
+                        if (option) {
+                            widget.value(option.Value);
+                            widget.trigger('change');
+                            return {success: true};
+                        }
+                        return {success: false, error: 'Option not found'};
+                    } catch(e) {
+                        return {success: false, error: e.toString()};
+                    }
+                })()
+            """)
+            if not result.get('success'):
+                raise Exception(f"Referrer Option failed: {result.get('error')}")
+            time.sleep(1)
+            logger.info("✓ Referrer Option set")
+            
+            # STEP 8: Referral Sources - Lead Gen
+            logger.info("STEP 8: Referral Sources...")
+            result = page.evaluate("""
+                (function() {
+                    try {
+                        var widget = $('#ReferralSourceId').data('kendoDropDownList');
+                        if (!widget) return {success: false, error: 'Widget not found'};
+                        var data = widget.dataSource.data();
+                        var option = data.find(item => item.Text === 'Lead Gen');
+                        if (option) {
+                            widget.value(option.Value);
+                            widget.trigger('change');
+                            return {success: true};
+                        }
+                        return {success: false, error: 'Option not found'};
+                    } catch(e) {
+                        return {success: false, error: e.toString()};
+                    }
+                })()
+            """)
+            if not result.get('success'):
+                raise Exception(f"Referral Sources failed: {result.get('error')}")
+            time.sleep(1)
+            logger.info("✓ Referral Sources set to Lead Gen")
+            
+            # STEP 9: Staff - Rodolfo Arceo
+            logger.info("STEP 9: Staff...")
+            result = page.evaluate("""
+                (function() {
+                    try {
+                        var widget = $('#StaffId').data('kendoDropDownList');
+                        if (!widget) return {success: false, error: 'Widget not found'};
+                        var data = widget.dataSource.data();
+                        var option = data.find(item => item.Text === 'Rodolfo Arceo');
+                        if (option) {
+                            widget.value(option.Value);
+                            widget.trigger('change');
+                            return {success: true};
+                        }
+                        return {success: false, error: 'Option not found'};
+                    } catch(e) {
+                        return {success: false, error: e.toString()};
+                    }
+                })()
+            """)
+            if not result.get('success'):
+                raise Exception(f"Staff failed: {result.get('error')}")
+            time.sleep(1)
+            logger.info("✓ Staff set to Rodolfo Arceo")
+            
+            # STEP 10: Project Roles - Estimator
+            logger.info("STEP 10: Project Roles...")
+            result = page.evaluate("""
+                (function() {
+                    try {
+                        var widget = $('#ProjectRoleId').data('kendoMultiSelect');
+                        if (!widget) return {success: false, error: 'Widget not found'};
+                        var data = widget.dataSource.data();
+                        var option = data.find(item => item.Text === 'Estimator');
+                        if (option) {
+                            widget.value([option.Value]);
+                            widget.trigger('change');
+                            return {success: true};
+                        }
+                        return {success: false, error: 'Option not found'};
+                    } catch(e) {
+                        return {success: false, error: e.toString()};
+                    }
+                })()
+            """)
+            if not result.get('success'):
+                raise Exception(f"Project Roles failed: {result.get('error')}")
+            time.sleep(1)
+            logger.info("✓ Project Roles set to Estimator")
+            
+            logger.info("✅ Form filling complete!")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Form filling error: {str(e)}")
+            import traceback
+            logger.error(traceback.format_exc())
+            raise Exception(f"Form filling failed: {str(e)}")
+
+
     def _submit_and_verify(self, page: Page) -> Optional[int]:
         """Submit the form and verify project was created"""
         try:
