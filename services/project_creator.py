@@ -247,6 +247,7 @@ class AlbiwareProjectCreator:
             
             # STEP 2: Project Type - EMS
             logger.info("STEP 2: Project Type...")
+            page.wait_for_selector('select#ProjectTypeId', timeout=10000)
             page.evaluate("""const sel = document.querySelector('select#ProjectTypeId'); const opt = Array.from(sel.options).find(o => o.text.includes('Emergency Mitigation Services')); if (opt) { sel.value = opt.value; sel.dispatchEvent(new Event('change', { bubbles: true })); }""")
             logger.info("✓ Project Type: EMS")
             time.sleep(1)
