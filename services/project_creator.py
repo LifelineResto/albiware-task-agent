@@ -417,9 +417,13 @@ class AlbiwareProjectCreator:
             # Extract project ID from URL
             current_url = page.url
             logger.info(f"Redirected to: {current_url}")
+            logger.info(f"albiware_url: {self.albiware_url}")
+            logger.info(f"Checking if current_url == '{self.albiware_url}/Project': {current_url == f'{self.albiware_url}/Project'}")
+            logger.info(f"Checking if current_url.startswith('{self.albiware_url}/Project?'): {current_url.startswith(f'{self.albiware_url}/Project?')}")
             
             # Case 1: Redirected to project detail page (e.g., /Project/1617650)
             if '/Project/' in current_url and '/Project/New' not in current_url and current_url != f"{self.albiware_url}/Project":
+                logger.info("Case 1: Project detail page detected")
                 project_id_str = current_url.split('/Project/')[-1].split('?')[0].split('/')[0]
                 try:
                     project_id = int(project_id_str)
@@ -430,11 +434,12 @@ class AlbiwareProjectCreator:
             
             # Case 2: Redirected to project list page (/Project)
             if current_url == f"{self.albiware_url}/Project" or current_url.startswith(f"{self.albiware_url}/Project?"):
-                logger.info("Redirected to project list page - project created successfully")
+                logger.info("Case 2: Project list page detected")
                 logger.info("✅ Project created successfully (ID not captured)")
                 return -1  # Use -1 to indicate success without ID
             
-            logger.warning("Could not verify project creation from URL")
+            logger.warning(f"Could not verify project creation from URL: {current_url}")
+            logger.warning(f"URL did not match any expected patterns")
             return None
             
         except Exception as e:
