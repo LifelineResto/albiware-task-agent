@@ -372,6 +372,8 @@ class AlbiwareProjectCreator:
 
     def _submit_and_verify(self, page: Page, contact: Contact) -> Optional[int]:
         """Submit the form and verify project was created"""
+        logger.info("========== _submit_and_verify CALLED ==========")
+        logger.info(f"Contact: {contact.full_name} (ID: {contact.id})")
         try:
             logger.info("Submitting project form...")
             
