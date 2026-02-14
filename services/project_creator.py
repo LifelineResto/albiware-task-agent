@@ -396,13 +396,17 @@ class AlbiwareProjectCreator:
             
             # Wait for navigation (may redirect to project detail or project list)
             logger.info("Waiting for navigation...")
+            logger.info(f"Current URL before wait: {page.url}")
             try:
                 # Wait for URL to change from /Project/New
+                logger.info("Calling wait_for_function...")
                 page.wait_for_function("window.location.pathname !== '/Project/New'", timeout=30000)
+                logger.info("wait_for_function completed")
                 time.sleep(2)  # Wait for page to settle
-            except PlaywrightTimeout:
+                logger.info(f"URL after wait: {page.url}")
+            except PlaywrightTimeout as timeout_err:
                 after_url = page.url
-                logger.error(f"Timeout waiting for redirect. URL is still: {after_url}")
+                logger.error(f"PlaywrightTimeout: URL is still: {after_url}")
                 # Check for error messages on the page
                 error_msgs = page.evaluate("""
                     () => {
@@ -412,6 +416,11 @@ class AlbiwareProjectCreator:
                 """)
                 if error_msgs:
                     logger.error(f"Error messages on page: {error_msgs}")
+                return None
+            except Exception as wait_err:
+                logger.error(f"Exception during wait_for_function: {type(wait_err).__name__}: {wait_err}")
+                import traceback
+                logger.error(traceback.format_exc())
                 return None
             
             # Extract project ID from URL
