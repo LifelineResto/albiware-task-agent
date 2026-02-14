@@ -247,21 +247,22 @@ class AlbiwareProjectCreator:
             
             # STEP 2: Project Type - EMS
             logger.info("STEP 2: Project Type...")
-            page.locator('select#ProjectTypeId').select_option(label='Emergency Mitigation Services (EMS)')
+            page.evaluate("""const sel = document.querySelector('select#ProjectTypeId'); const opt = Array.from(sel.options).find(o => o.text.includes('Emergency Mitigation Services')); if (opt) { sel.value = opt.value; sel.dispatchEvent(new Event('change', { bubbles: true })); }""")
             logger.info("✓ Project Type: EMS")
             time.sleep(1)
             
             # STEP 3: Property Type
             logger.info("STEP 3: Property Type...")
             prop_type = contact.property_type if contact.property_type else "Residential"
-            page.locator('select#PropertyType').select_option(label=prop_type)
+            page.evaluate(f"""const sel = document.querySelector('select#PropertyType'); const opt = Array.from(sel.options).find(o => o.text === '{prop_type}'); if (opt) {{ sel.value = opt.value; sel.dispatchEvent(new Event('change', {{ bubbles: true }})); }}""")
             logger.info(f"✓ Property Type: {prop_type}")
             time.sleep(1)
             
             # STEP 4: Insurance
             logger.info("STEP 4: Insurance...")
             has_ins = contact.has_insurance if contact.has_insurance is not None else False
-            page.locator('select#InsuranceInfo').select_option(label="Yes" if has_ins else "No")
+            ins_val = "Yes" if has_ins else "No"
+            page.evaluate(f"""const sel = document.querySelector('select#InsuranceInfo'); const opt = Array.from(sel.options).find(o => o.text === '{ins_val}'); if (opt) {{ sel.value = opt.value; sel.dispatchEvent(new Event('change', {{ bubbles: true }})); }}""")
             time.sleep(2)
             if has_ins:
                 ins_co = contact.insurance_company if contact.insurance_company else "N/A"
@@ -284,13 +285,13 @@ class AlbiwareProjectCreator:
             # STEP 6: Referral Sources - Lead Gen
             logger.info("STEP 6: Referral Sources...")
             ref_source = contact.referral_source if contact.referral_source else "Lead Gen"
-            page.locator('select#ReferralSourceId').select_option(label=ref_source)
+            page.evaluate(f"""const sel = document.querySelector('select#ReferralSourceId'); const opt = Array.from(sel.options).find(o => o.text === '{ref_source}'); if (opt) {{ sel.value = opt.value; sel.dispatchEvent(new Event('change', {{ bubbles: true }})); }}""")
             logger.info(f"✓ Referral Source: {ref_source}")
             time.sleep(1)
             
             # STEP 7: Staff - Rodolfo Arceo
             logger.info("STEP 7: Staff...")
-            page.locator('select#StaffId').select_option(label='Rodolfo Arceo')
+            page.evaluate("""const sel = document.querySelector('select#StaffId'); const opt = Array.from(sel.options).find(o => o.text === 'Rodolfo Arceo'); if (opt) { sel.value = opt.value; sel.dispatchEvent(new Event('change', { bubbles: true })); }""")
             logger.info("✓ Staff: Rodolfo Arceo")
             time.sleep(1)
             
