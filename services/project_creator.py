@@ -297,23 +297,27 @@ class AlbiwareProjectCreator:
             # STEP 4: Property Type (regular select)
             logger.info("STEP 4: Property Type...")
             prop_type = contact.property_type if contact.property_type else "Residential"
+            # Map display name to value: "Residential" -> "residential", "Commercial" -> "commercial"
+            prop_type_value = prop_type.lower()
             try:
                 page.wait_for_selector('#PropertyType', state='visible', timeout=10000)
-                page.select_option('#PropertyType', label=prop_type, timeout=10000)
+                page.select_option('#PropertyType', value=prop_type_value, timeout=10000)
                 time.sleep(1)
-                logger.info(f"✓ Property Type set to {prop_type}")
+                logger.info(f"✓ Property Type set to {prop_type} (value: {prop_type_value})")
             except Exception as e:
                 raise Exception(f"Property Type failed: {str(e)}")
             
             # STEP 5: Insurance Info (regular select - CoveredLoss)
             logger.info("STEP 5: Insurance Info...")
             has_ins = contact.has_insurance if contact.has_insurance is not None else False
-            ins_val = "Yes" if has_ins else "No"
+            # Values are "True" and "False" (strings), not "Yes" and "No"
+            ins_value = "True" if has_ins else "False"
+            ins_label = "Yes" if has_ins else "No"
             try:
                 page.wait_for_selector('#CoveredLoss', state='visible', timeout=10000)
-                page.select_option('#CoveredLoss', label=ins_val, timeout=10000)
+                page.select_option('#CoveredLoss', value=ins_value, timeout=10000)
                 time.sleep(2)
-                logger.info(f"✓ Insurance Info set to {ins_val}")
+                logger.info(f"✓ Insurance Info set to {ins_label} (value: {ins_value})")
             except Exception as e:
                 raise Exception(f"Insurance Info failed: {str(e)}")
             
