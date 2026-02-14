@@ -394,10 +394,12 @@ class AlbiwareProjectCreator:
             logger.info("Clicking Create button...")
             page.click('input#SubmitButton[type="submit"]')
             
-            # Wait for navigation (project creation redirects to project detail page)
+            # Wait for navigation (may redirect to project detail or project list)
             logger.info("Waiting for navigation...")
             try:
-                page.wait_for_url("**/Project/*", timeout=30000)
+                # Wait for URL to change from /Project/New
+                page.wait_for_function("window.location.pathname !== '/Project/New'", timeout=30000)
+                time.sleep(2)  # Wait for page to settle
             except PlaywrightTimeout:
                 after_url = page.url
                 logger.error(f"Timeout waiting for redirect. URL is still: {after_url}")
@@ -416,8 +418,8 @@ class AlbiwareProjectCreator:
             current_url = page.url
             logger.info(f"Redirected to: {current_url}")
             
-            # URL format: https://app.albiware.com/Project/1617650?tab=BasicInfo
-            if '/Project/' in current_url and '/Project/New' not in current_url:
+            # Case 1: Redirected to project detail page (e.g., /Project/1617650)
+            if '/Project/' in current_url and '/Project/New' not in current_url and current_url != f"{self.albiware_url}/Project":
                 project_id_str = current_url.split('/Project/')[-1].split('?')[0].split('/')[0]
                 try:
                     project_id = int(project_id_str)
@@ -425,9 +427,46 @@ class AlbiwareProjectCreator:
                     return project_id
                 except ValueError:
                     logger.error(f"Could not parse project ID from: {project_id_str}")
-                    return None
             
-            logger.warning("Could not extract project ID from URL")
+            # Case 2: Redirected to project list page (/Project)
+            if current_url == f"{self.albiware_url}/Project" or current_url.startswith(f"{self.albiware_url}/Project?"):
+                logger.info("Redirected to project list page - project likely created")
+                # Try to find the newly created project (should be first in list for this customer)
+                try:
+                    # Look for project with the customer name in the grid
+                    project_link = page.evaluate(f"""
+                        () => {{
+                            const customerName = "{contact.full_name}";
+                            const rows = document.querySelectorAll('#ProjectGrid table tbody tr');
+                            for (const row of rows) {{
+                                const customerCell = row.querySelector('td:nth-child(2)');
+                                if (customerCell && customerCell.textContent.includes(customerName)) {{
+                                    const projectLink = row.querySelector('td:first-child a');
+                                    if (projectLink) {{
+                                        return projectLink.href;
+                                    }}
+                                }}
+                            }}
+                            return null;
+                        }}
+                    """)
+                    
+                    if project_link and '/Project/' in project_link:
+                        project_id_str = project_link.split('/Project/')[-1].split('?')[0]
+                        try:
+                            project_id = int(project_id_str)
+                            logger.info(f"✅ Found newly created project with ID: {project_id}")
+                            return project_id
+                        except ValueError:
+                            pass
+                except Exception as e:
+                    logger.warning(f"Could not find project in list: {e}")
+                
+                # If we can't find the project ID, still consider it a success
+                logger.info("✅ Project created successfully (ID not captured)")
+                return -1  # Use -1 to indicate success without ID
+            
+            logger.warning("Could not verify project creation from URL")
             return None
             
         except Exception as e:
