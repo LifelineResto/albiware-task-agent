@@ -156,20 +156,26 @@ class AlbiwareProjectCreator:
             page.wait_for_selector('#Email', timeout=10000)
             logger.info("Found email field")
             
-            # Fill login form
-            page.fill('#Email', self.email)
+            # Fill login form with human-like behavior
+            page.click('#Email')  # Click to focus
+            time.sleep(0.5)
+            page.type('#Email', self.email, delay=100)  # Type slowly
             logger.info(f"Filled email: {self.email}")
-            page.fill('#password', self.password)
+            time.sleep(0.3)
+            page.click('#password')  # Click to focus
+            time.sleep(0.5)
+            page.type('#password', self.password, delay=100)  # Type slowly
             logger.info("Filled password")
+            time.sleep(1)  # Pause before clicking submit
             page.click('#btn-login')
             logger.info("Clicked login button")
             
             # Wait for navigation after login
-            page.wait_for_load_state("networkidle", timeout=15000)
+            page.wait_for_load_state("networkidle", timeout=20000)
             logger.info(f"After login URL: {page.url}")
             
             # Wait a bit more for soft redirect to complete
-            time.sleep(3)
+            time.sleep(5)
             
             # Verify login was successful - check page title (Albiware does soft redirect)
             page_title = page.title()
