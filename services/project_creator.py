@@ -218,7 +218,9 @@ class AlbiwareProjectCreator:
             page.wait_for_selector('select#CustomerOption', state='visible', timeout=10000)
             # Wait for element to be enabled (Kendo initialization)
             page.wait_for_function("document.querySelector('select#CustomerOption') && !document.querySelector('select#CustomerOption').disabled", timeout=10000)
-            page.locator('select#CustomerOption').select_option('AddExisting')
+            # Use JavaScript to set value (more reliable with Kendo widgets)
+            page.evaluate("document.querySelector('select#CustomerOption').value = 'AddExisting'; document.querySelector('select#CustomerOption').dispatchEvent(new Event('change', { bubbles: true }));")
+            logger.info("Set CustomerOption to AddExisting")
             time.sleep(3)
             
             # Set customer using Select2
