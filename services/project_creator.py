@@ -375,11 +375,42 @@ class AlbiwareProjectCreator:
         try:
             logger.info("Submitting project form...")
             
+            # Check for validation errors before submitting
+            validation_errors = page.evaluate("""
+                () => {
+                    const errors = document.querySelectorAll('.field-validation-error, .validation-summary-errors');
+                    return Array.from(errors).map(e => e.textContent.trim()).filter(t => t);
+                }
+            """)
+            if validation_errors:
+                logger.error(f"Form has validation errors: {validation_errors}")
+                return None
+            
+            # Get current URL before submit
+            before_url = page.url
+            logger.info(f"URL before submit: {before_url}")
+            
             # Click the Create button
-            page.click('button:has-text("Create"), input[value="Create"]')
+            logger.info("Clicking Create button...")
+            page.click('input#SubmitButton[type="submit"]')
             
             # Wait for navigation (project creation redirects to project detail page)
-            page.wait_for_url("**/Project/*", timeout=30000)
+            logger.info("Waiting for navigation...")
+            try:
+                page.wait_for_url("**/Project/*", timeout=30000)
+            except PlaywrightTimeout:
+                after_url = page.url
+                logger.error(f"Timeout waiting for redirect. URL is still: {after_url}")
+                # Check for error messages on the page
+                error_msgs = page.evaluate("""
+                    () => {
+                        const errors = document.querySelectorAll('.alert-danger, .error, .field-validation-error');
+                        return Array.from(errors).map(e => e.textContent.trim()).filter(t => t);
+                    }
+                """)
+                if error_msgs:
+                    logger.error(f"Error messages on page: {error_msgs}")
+                return None
             
             # Extract project ID from URL
             current_url = page.url
@@ -399,9 +430,8 @@ class AlbiwareProjectCreator:
             logger.warning("Could not extract project ID from URL")
             return None
             
-        except PlaywrightTimeout:
-            logger.error("Timeout waiting for project creation")
-            return None
         except Exception as e:
             logger.error(f"Submit/verify error: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
             return None
