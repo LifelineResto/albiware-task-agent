@@ -365,8 +365,9 @@ class AlbiwareProjectCreator:
             try:
                 page.wait_for_selector('#StaffId', state='visible', timeout=10000)
                 page.select_option('#StaffId', label='Rodolfo Arceo', timeout=10000)
-                time.sleep(1)
                 logger.info("✓ Staff set to Rodolfo Arceo")
+                # Wait longer for Project Role options to dynamically load
+                time.sleep(3)
             except Exception as e:
                 raise Exception(f"Staff failed: {str(e)}")
             
@@ -374,9 +375,12 @@ class AlbiwareProjectCreator:
             logger.info("STEP 10: Project Roles...")
             try:
                 page.wait_for_selector('#ProjectRoleId', state='visible', timeout=10000)
-                page.select_option('#ProjectRoleId', label='Estimator', timeout=10000)
+                # Wait for options to be populated
                 time.sleep(1)
+                page.select_option('#ProjectRoleId', label='Estimator', timeout=10000)
                 logger.info("✓ Project Roles set to Estimator")
+                # Wait for all events to propagate before submit
+                time.sleep(2)
             except Exception as e:
                 raise Exception(f"Project Roles failed: {str(e)}")
             
