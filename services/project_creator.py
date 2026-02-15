@@ -401,6 +401,24 @@ class AlbiwareProjectCreator:
         try:
             logger.info("Submitting project form...")
             
+            # Check all field values before submitting
+            field_values = page.evaluate("""
+                () => {
+                    return {
+                        CustomerOption: $('#CustomerOption').val(),
+                        Customer: $('select[name="ProjectCustomer.ExistingOrganizationContactIds"]').val(),
+                        ProjectType: $('#ProjectTypeId').data('kendoDropDownList')?.value(),
+                        PropertyType: $('#PropertyType').val(),
+                        CoveredLoss: $('#CoveredLoss').val(),
+                        ReferrerOption: $('#ReferrerOption').val(),
+                        ReferralSourceId: $('#ProjectReferrer_ReferralSourceId').val(),
+                        Staff: $('#StaffId').val(),
+                        ProjectRole: $('#ProjectRoleId').val()
+                    };
+                }
+            """)
+            logger.info(f"Field values before submit: {field_values}")
+            
             # Check for validation errors before submitting
             validation_errors = page.evaluate("""
                 () => {
