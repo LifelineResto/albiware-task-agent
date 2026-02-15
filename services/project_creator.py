@@ -446,12 +446,27 @@ class AlbiwareProjectCreator:
             before_url = page.url
             logger.info(f"URL before submit: {before_url}")
             
-            # Click the Create button
+            # Click the Create button using JavaScript (more reliable than Playwright click)
             logger.info("Clicking Create button...")
-            # Wait for button to be ready and click with longer timeout
+            # Wait for button to be ready
             page.wait_for_selector('input#SubmitButton[type="submit"]', state='visible', timeout=5000)
-            page.click('input#SubmitButton[type="submit"]', timeout=5000)
-            logger.info("Create button clicked successfully")
+            # Use JavaScript click instead of Playwright click to ensure event handlers fire
+            click_result = page.evaluate("""
+                () => {
+                    try {
+                        const button = document.querySelector('input#SubmitButton[type="submit"]');
+                        if (!button) return {success: false, error: 'Button not found'};
+                        button.click();
+                        return {success: true};
+                    } catch(e) {
+                        return {success: false, error: e.toString()};
+                    }
+                }
+            """)
+            if not click_result.get('success'):
+                logger.error(f"Button click failed: {click_result.get('error')}")
+                return None
+            logger.info("Create button clicked successfully (via JavaScript)")
             
             # Wait for navigation (may redirect to project detail or project list)
             logger.info("Waiting for navigation...")
