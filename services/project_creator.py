@@ -471,9 +471,10 @@ class AlbiwareProjectCreator:
                             }
                             
                             // Form is valid, now submit it
-                            // Use native submit to bypass jQuery validation (already validated)
-                            form.submit();
-                            return {success: true, method: 'jquery-validated-then-native-submit'};
+                            // CRITICAL: Use jQuery trigger('submit') to fire the submit event handler
+                            // NOT form.submit() which bypasses jQuery event handlers
+                            $(form).trigger('submit');
+                            return {success: true, method: 'jquery-validated-then-trigger-submit'};
                         }
                         
                         // No jQuery Validation, try regular submit
