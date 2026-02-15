@@ -446,57 +446,13 @@ class AlbiwareProjectCreator:
             before_url = page.url
             logger.info(f"URL before submit: {before_url}")
             
-            # Submit the form using jQuery Validation (Albiware uses jQuery Validation)
-            logger.info("Submitting form...")
-            # Wait for button to be ready (ensures form is ready)
+            # Submit the form by clicking the Create button
+            logger.info("Clicking Create button...")
+            # Wait for button to be ready
             page.wait_for_selector('input#SubmitButton[type="submit"]', state='visible', timeout=5000)
-            # Validate and submit using jQuery Validation
-            submit_result = page.evaluate("""
-                () => {
-                    try {
-                        const form = document.querySelector('form');
-                        if (!form) return {success: false, error: 'Form not found'};
-                        
-                        // Check if jQuery Validation is being used
-                        if (typeof $ !== 'undefined' && $(form).data('validator')) {
-                            const validator = $(form).data('validator');
-                            
-                            // Manually validate the form
-                            const isValid = validator.form();
-                            
-                            if (!isValid) {
-                                // Get validation errors
-                                const errors = validator.errorList.map(e => e.message);
-                                return {success: false, error: 'Validation failed', errors, method: 'jquery-validation'};
-                            }
-                            
-                            // Form is valid, now submit it
-                            // CRITICAL: Use jQuery trigger('submit') to fire the submit event handler
-                            // NOT form.submit() which bypasses jQuery event handlers
-                            $(form).trigger('submit');
-                            return {success: true, method: 'jquery-validated-then-trigger-submit'};
-                        }
-                        
-                        // No jQuery Validation, try regular submit
-                        if (typeof $ !== 'undefined') {
-                            $(form).submit();
-                            return {success: true, method: 'jquery'};
-                        }
-                        
-                        form.submit();
-                        return {success: true, method: 'native'};
-                    } catch(e) {
-                        return {success: false, error: e.toString()};
-                    }
-                }
-            """)
-            if not submit_result.get('success'):
-                logger.error(f"Form submit failed: {submit_result.get('error')}")
-                if 'errors' in submit_result:
-                    logger.error(f"Validation errors: {submit_result['errors']}")
-                return None
-            logger.info(f"Form submitted successfully (via {submit_result.get('method')})")
-            logger.info(f"Submit result: {submit_result}")
+            # Click the button - this will trigger jQuery Validation and submit if valid
+            page.click('input#SubmitButton[type="submit"]')
+            logger.info("Create button clicked")
             
             # Wait for navigation (may redirect to project detail or project list)
             logger.info("Waiting for navigation...")
