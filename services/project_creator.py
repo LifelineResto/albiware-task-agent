@@ -281,7 +281,7 @@ class AlbiwareProjectCreator:
                         if (emsOption) {
                             widget.value(emsOption.Value);
                             widget.trigger('change');
-                            return {success: true};
+                            return {success: true, value: emsOption.Value, text: emsOption.Text};
                         }
                         return {success: false, error: 'EMS option not found'};
                     } catch(e) {
@@ -292,7 +292,9 @@ class AlbiwareProjectCreator:
             if not result.get('success'):
                 raise Exception(f"Project Type failed: {result.get('error')}")
             time.sleep(1)
-            logger.info("✓ Project Type set to EMS")
+            # Verify the value persists
+            verify_result = page.evaluate("$('#ProjectTypeId').data('kendoDropDownList')?.value()")
+            logger.info(f"✓ Project Type set to: {result.get('text')} (Value: {result.get('value')}, Verified: {verify_result})")
             
             # STEP 4: Property Type (regular select)
             logger.info("STEP 4: Property Type...")
@@ -301,9 +303,10 @@ class AlbiwareProjectCreator:
             prop_type_value = prop_type.lower()
             try:
                 page.wait_for_selector('#PropertyType', state='visible', timeout=10000)
-                page.select_option('#PropertyType', value=prop_type_value, timeout=10000)
+                page.select_option('#PropertyType', value=prop_type.lower(), timeout=10000)
                 time.sleep(1)
-                logger.info(f"✓ Property Type set to {prop_type} (value: {prop_type_value})")
+                verify_prop = page.evaluate("$('#PropertyType').val()")
+                logger.info(f"✓ Property Type: {prop_type} (Verified: {verify_prop})")
             except Exception as e:
                 raise Exception(f"Property Type failed: {str(e)}")
             
@@ -315,9 +318,10 @@ class AlbiwareProjectCreator:
             ins_label = "Yes" if has_ins else "No"
             try:
                 page.wait_for_selector('#CoveredLoss', state='visible', timeout=10000)
-                page.select_option('#CoveredLoss', value=ins_value, timeout=10000)
-                time.sleep(2)
-                logger.info(f"✓ Insurance Info set to {ins_label} (value: {ins_value})")
+                page.select_option('#CoveredLoss', value=str(has_ins), timeout=10000)
+                time.sleep(1)
+                verify_ins = page.evaluate("$('#CoveredLoss').val()")
+                logger.info(f"✓ Insurance Info: {has_ins} (Verified: {verify_ins})")
             except Exception as e:
                 raise Exception(f"Insurance Info failed: {str(e)}")
             
@@ -365,7 +369,9 @@ class AlbiwareProjectCreator:
             try:
                 page.wait_for_selector('#StaffId', state='visible', timeout=10000)
                 page.select_option('#StaffId', label='Rodolfo Arceo', timeout=10000)
-                logger.info("✓ Staff set to Rodolfo Arceo")
+                time.sleep(1)
+                verify_staff = page.evaluate("$('#StaffId').val()")
+                logger.info(f"✓ Staff set to Rodolfo Arceo (Verified: {verify_staff})")
                 # Wait longer for Project Role options to dynamically load
                 time.sleep(3)
             except Exception as e:
@@ -378,7 +384,9 @@ class AlbiwareProjectCreator:
                 # Wait for options to be populated
                 time.sleep(1)
                 page.select_option('#ProjectRoleId', label='Estimator', timeout=10000)
-                logger.info("✓ Project Roles set to Estimator")
+                time.sleep(1)
+                verify_role = page.evaluate("$('#ProjectRoleId').val()")
+                logger.info(f"✓ Project Roles set to Estimator (Verified: {verify_role})")
                 # Wait for all events to propagate before submit
                 time.sleep(2)
             except Exception as e:
