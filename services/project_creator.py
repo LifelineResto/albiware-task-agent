@@ -446,27 +446,39 @@ class AlbiwareProjectCreator:
             before_url = page.url
             logger.info(f"URL before submit: {before_url}")
             
-            # Click the Create button using JavaScript (more reliable than Playwright click)
-            logger.info("Clicking Create button...")
-            # Wait for button to be ready
+            # Submit the form programmatically (bypasses button validation)
+            logger.info("Submitting form...")
+            # Wait for button to be ready (ensures form is ready)
             page.wait_for_selector('input#SubmitButton[type="submit"]', state='visible', timeout=5000)
-            # Use JavaScript click instead of Playwright click to ensure event handlers fire
-            click_result = page.evaluate("""
+            # Try multiple submission methods
+            submit_result = page.evaluate("""
                 () => {
                     try {
-                        const button = document.querySelector('input#SubmitButton[type="submit"]');
-                        if (!button) return {success: false, error: 'Button not found'};
-                        button.click();
-                        return {success: true};
+                        // Method 1: Find the form and submit directly
+                        const form = document.querySelector('form');
+                        if (!form) return {success: false, error: 'Form not found', method: 'none'};
+                        
+                        // Disable HTML5 validation that might block submit
+                        form.noValidate = true;
+                        
+                        // Try jQuery submit first (Albiware uses jQuery)
+                        if (typeof $ !== 'undefined' && $(form).length) {
+                            $(form).submit();
+                            return {success: true, method: 'jquery'};
+                        }
+                        
+                        // Fallback to native submit
+                        form.submit();
+                        return {success: true, method: 'native'};
                     } catch(e) {
-                        return {success: false, error: e.toString()};
+                        return {success: false, error: e.toString(), method: 'error'};
                     }
                 }
             """)
-            if not click_result.get('success'):
-                logger.error(f"Button click failed: {click_result.get('error')}")
+            if not submit_result.get('success'):
+                logger.error(f"Form submit failed: {submit_result.get('error')}")
                 return None
-            logger.info("Create button clicked successfully (via JavaScript)")
+            logger.info(f"Form submitted successfully (via {submit_result.get('method')})")
             
             # Wait for navigation (may redirect to project detail or project list)
             logger.info("Waiting for navigation...")
