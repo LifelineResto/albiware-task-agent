@@ -399,6 +399,10 @@ class AlbiwareProjectCreator:
         logger.info("========== _submit_and_verify CALLED ==========")
         logger.info(f"Contact: {contact.full_name} (ID: {contact.id})")
         try:
+            # Wait for all events to settle before submitting
+            logger.info("Waiting 3 seconds for all form events to settle...")
+            time.sleep(3)
+            
             logger.info("Submitting project form...")
             
             # Check all field values before submitting
@@ -436,7 +440,10 @@ class AlbiwareProjectCreator:
             
             # Click the Create button
             logger.info("Clicking Create button...")
-            page.click('input#SubmitButton[type="submit"]')
+            # Wait for button to be ready and click with longer timeout
+            page.wait_for_selector('input#SubmitButton[type="submit"]', state='visible', timeout=5000)
+            page.click('input#SubmitButton[type="submit"]', timeout=5000)
+            logger.info("Create button clicked successfully")
             
             # Wait for navigation (may redirect to project detail or project list)
             logger.info("Waiting for navigation...")
