@@ -157,7 +157,7 @@ class AlbiwareProjectCreator:
                 
                 # Click Create button
                 logger.info("Clicking Create button...")
-                page.click('button:has-text("Create")')
+                page.click('#SubmitButton')
                 time.sleep(3)
                 
                 # Check if we're on a project page (success)
