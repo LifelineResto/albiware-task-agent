@@ -43,14 +43,29 @@ class AlbiwareProjectCreator:
             logger.info(f"Filling form for {contact.full_name}...")
             
             # Navigate to new project form
-            page.goto('https://app.albiware.com/Projects/Create', wait_until='domcontentloaded')
+            page.goto('https://app.albiware.com/Project/New', wait_until='domcontentloaded')
             time.sleep(3)
             
-            # STEP 1: Customer - Type and select
+            # STEP 1: Customer - Show hidden field and select
             logger.info("Step 1: Customer...")
-            # Fill the search input directly
+            # Show the customer field by manipulating the DOM
+            page.evaluate("""
+                const existingOrgField = document.getElementById('ExistingOrganizationId');
+                const grandparent = existingOrgField.parentElement.parentElement;
+                grandparent.style.display = 'block';
+                document.getElementById('CustomerOption').value = 'AddExisting';
+            """)
+            time.sleep(1)
+            
+            # Click to open the dropdown
+            page.click('span[role="listbox"]:has-text("Choose One")')
+            time.sleep(1)
+            
+            # Type to search
             page.fill('#ExistingOrganizationId-list input[role="listbox"]', contact.full_name)
-            time.sleep(2)
+            time.sleep(1)
+            
+            # Select the result
             page.keyboard.press('ArrowDown')
             time.sleep(0.5)
             page.keyboard.press('Enter')
