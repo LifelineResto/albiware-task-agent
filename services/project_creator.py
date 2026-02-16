@@ -201,7 +201,7 @@ class AlbiwareProjectCreator:
             time.sleep(1)
             
             # Type the customer name in the search box
-            search_input = page.locator('input[role="listbox"]')
+            search_input = page.locator('#ExistingOrganizationId-list input[role="listbox"]')
             search_input.fill(contact.full_name)
             time.sleep(1)
             
