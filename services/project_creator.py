@@ -12,9 +12,9 @@ from sqlalchemy.orm import Session
 logger = logging.getLogger(__name__)
 
 class AlbiwareProjectCreator:
-    def __init__(self):
-        self.email = os.getenv('ALBIWARE_EMAIL')
-        self.password = os.getenv('ALBIWARE_PASSWORD')
+    def __init__(self, albiware_email: str = None, albiware_password: str = None):
+        self.email = albiware_email or os.getenv('ALBIWARE_EMAIL')
+        self.password = albiware_password or os.getenv('ALBIWARE_PASSWORD')
         
     def _login(self, page):
         """Login to Albiware - EXACT steps that worked"""
