@@ -99,10 +99,10 @@ class AlbiwareProjectCreator:
             time.sleep(1)
             logger.info("✓ Insurance: No")
             
-            # STEP 5: Referrer Option - Set to Choose One (skip referrer)
+            # STEP 5: Referrer Option - Set to empty string (Choose One)
             logger.info("Step 5: Referrer Option...")
             page.evaluate("""
-                $('#ReferrerOption').val('ChooseOne').trigger('change');
+                $('#ReferrerOption').val('').trigger('change');
             """)
             time.sleep(1)
             logger.info("✓ Referrer: None")
@@ -117,17 +117,20 @@ class AlbiwareProjectCreator:
                     $('#StaffId').val(rodolfoOption.value).trigger('change');
                 }
             """)
-            time.sleep(2)
+            time.sleep(3)  # Wait longer for ProjectRoleId to populate
             logger.info("✓ Staff: Rodolfo Arceo")
             
-            # STEP 7: Project Role - Estimator
+            # STEP 7: Project Role - Estimator (wait for dropdown to populate after staff selection)
             logger.info("Step 7: Project Role...")
             page.evaluate("""
-                // Find Estimator's value in the dropdown
+                // Wait and find Estimator's value in the dropdown
                 const estimatorOption = Array.from(document.querySelectorAll('#ProjectRoleId option'))
                     .find(opt => opt.text.includes('Estimator'));
                 if (estimatorOption) {
                     $('#ProjectRoleId').val(estimatorOption.value).trigger('change');
+                } else {
+                    console.log('Estimator option not found. Available options:', 
+                        Array.from(document.querySelectorAll('#ProjectRoleId option')).map(o => o.text));
                 }
             """)
             time.sleep(1)
