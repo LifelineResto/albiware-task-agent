@@ -268,21 +268,20 @@ class AlbiwareProjectCreator:
             time.sleep(2)  # Wait for Referral Sources field to appear
             logger.info("✓ Referrer Option set")
             
-            # STEP 7: Referral Sources - CRITICAL FIX
-            # Must click dropdown and select an option using keyboard
+            # STEP 7: Referral Sources - Use jQuery approach
             logger.info("STEP 7: Referral Sources...")
-            
-            # Click on the Referral Sources dropdown using a more specific selector
-            # Target the span that's associated with #ReferralSources select
-            page.click('#ReferralSources-list span[role="listbox"]')
-            time.sleep(1)
-            
-            # Press Arrow Down to select first option
-            page.keyboard.press('ArrowDown')
-            time.sleep(0.5)
-            
-            # Press Enter to select
-            page.keyboard.press('Enter')
+            result = page.evaluate("""
+                (function() {
+                    var $select = $('#ReferralSources');
+                    var firstOption = $select.find('option').not('[value=\"\"]').first();
+                    if (firstOption.length > 0) {
+                        var value = firstOption.val();
+                        $select.val(value).trigger('change');
+                        return {value: value, success: true};
+                    }
+                    return {value: null, success: false};
+                })()
+            """)
             time.sleep(1)
             
             # Verify
