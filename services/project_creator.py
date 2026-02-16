@@ -277,14 +277,12 @@ class AlbiwareProjectCreator:
             referral_dropdowns = page.locator('span[role="listbox"]:has-text("Choose One")')
             # Get the one in the Referrer Information section (should be the 3rd one)
             referral_dropdowns.nth(2).click()
-            time.sleep(1)
+            time.sleep(2)
             
-            # Press Arrow Down to select first option
-            page.keyboard.press('ArrowDown')
-            time.sleep(0.5)
-            
-            # Press Enter to select
-            page.keyboard.press('Enter')
+            # Wait for dropdown options to appear and click the first one
+            # The dropdown list should be visible now
+            first_option = page.locator('ul[role="listbox"] li').first
+            first_option.click()
             time.sleep(1)
             
             # Verify
