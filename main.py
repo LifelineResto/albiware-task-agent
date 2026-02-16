@@ -685,6 +685,37 @@ async def update_contact_albiware_id(
         return {"success": False, "message": str(e)}
 
 
+@app.post("/api/admin/set-project-creation-needed")
+async def set_project_creation_needed(
+    contact_id: int,
+    needed: bool = True,
+    db: Session = Depends(get_db)
+):
+    """
+    ADMIN ENDPOINT: Set project_creation_needed flag for a contact
+    """
+    try:
+        contact = db.query(Contact).filter(Contact.id == contact_id).first()
+        if not contact:
+            return {"success": False, "message": f"Contact {contact_id} not found"}
+        
+        old_value = contact.project_creation_needed
+        contact.project_creation_needed = needed
+        db.commit()
+        
+        return {
+            "success": True,
+            "message": "Contact updated",
+            "contact_id": contact_id,
+            "full_name": contact.full_name,
+            "old_value": old_value,
+            "new_value": needed
+        }
+    except Exception as e:
+        db.rollback()
+        return {"success": False, "message": str(e)}
+
+
 @app.get("/api/analytics/summary")
 async def get_analytics_summary(db: Session = Depends(get_db)):
     """Get summary analytics for both tasks and contacts."""
