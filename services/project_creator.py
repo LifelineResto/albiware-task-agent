@@ -82,31 +82,51 @@ class AlbiwareProjectCreator:
             
             # STEP 3: Property Type
             logger.info("Step 3: Property Type...")
-            page.select_option('#PropertyType', value='residential')
+            page.evaluate("""
+                $('#PropertyType').val('residential').trigger('change');
+            """)
             time.sleep(1)
             logger.info("✓ Property Type: Residential")
             
-            # STEP 4: Insurance - Set to No (simpler)
+            # STEP 4: Insurance - Set to No
             logger.info("Step 4: Insurance...")
-            page.select_option('#CoveredLoss', value='0')
+            page.evaluate("""
+                $('#CoveredLoss').val('0').trigger('change');
+            """)
             time.sleep(1)
             logger.info("✓ Insurance: No")
             
-            # STEP 5: Referrer Option - Skip referral sources entirely
+            # STEP 5: Referrer Option - Set to Choose One (skip referrer)
             logger.info("Step 5: Referrer Option...")
-            page.select_option('#ReferrerOption', label='None')
+            page.evaluate("""
+                $('#ReferrerOption').val('ChooseOne').trigger('change');
+            """)
             time.sleep(1)
             logger.info("✓ Referrer: None")
             
-            # STEP 6: Staff
+            # STEP 6: Staff - Rodolfo Arceo
             logger.info("Step 6: Staff...")
-            page.select_option('#StaffId', label='Rodolfo Arceo')
+            page.evaluate("""
+                // Find Rodolfo Arceo's value in the dropdown
+                const rodolfoOption = Array.from(document.querySelectorAll('#StaffId option'))
+                    .find(opt => opt.text.includes('Rodolfo Arceo'));
+                if (rodolfoOption) {
+                    $('#StaffId').val(rodolfoOption.value).trigger('change');
+                }
+            """)
             time.sleep(2)
             logger.info("✓ Staff: Rodolfo Arceo")
             
-            # STEP 7: Project Role
+            # STEP 7: Project Role - Estimator
             logger.info("Step 7: Project Role...")
-            page.select_option('#ProjectRoleId', label='Estimator')
+            page.evaluate("""
+                // Find Estimator's value in the dropdown
+                const estimatorOption = Array.from(document.querySelectorAll('#ProjectRoleId option'))
+                    .find(opt => opt.text.includes('Estimator'));
+                if (estimatorOption) {
+                    $('#ProjectRoleId').val(estimatorOption.value).trigger('change');
+                }
+            """)
             time.sleep(1)
             logger.info("✓ Project Role: Estimator")
             
