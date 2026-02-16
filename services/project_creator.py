@@ -273,16 +273,27 @@ class AlbiwareProjectCreator:
             # Must click dropdown and select an option using keyboard
             logger.info("STEP 7: Referral Sources...")
             
-            # Click on the Referral Sources dropdown
-            referral_dropdowns = page.locator('span[role="listbox"]:has-text("Choose One")')
-            # Get the one in the Referrer Information section (should be the 3rd one)
-            referral_dropdowns.nth(2).click()
-            time.sleep(2)
-            
-            # Wait for dropdown options to appear and click the first one
-            # The dropdown list should be visible now
-            first_option = page.locator('ul[role="listbox"] li').first
-            first_option.click()
+            # Use JavaScript to select the first option from Referral Sources dropdown
+            result = page.evaluate("""
+                (function() {
+                    try {
+                        var widget = $('#ReferralSources').data('kendoDropDownList');
+                        if (!widget) return {success: false, error: 'Widget not found'};
+                        var data = widget.dataSource.data();
+                        if (data && data.length > 0) {
+                            var firstOption = data[0];
+                            widget.value(firstOption.Value);
+                            widget.trigger('change');
+                            return {success: true, value: firstOption.Value, text: firstOption.Text};
+                        }
+                        return {success: false, error: 'No options available'};
+                    } catch(e) {
+                        return {success: false, error: e.toString()};
+                    }
+                })()
+            """)
+            if not result.get('success'):
+                raise Exception(f"Referral Sources selection failed: {result.get('error')}")
             time.sleep(1)
             
             # Verify
