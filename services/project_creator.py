@@ -136,10 +136,10 @@ class AlbiwareProjectCreator:
             
             # Fill login form
             page.fill('input#Email', self.email)
-            page.fill('input#Password', self.password)
+            page.fill('input#password', self.password)
             
             # Click login button
-            page.click('button[type="submit"]')
+            page.click('button#btn-login')
             
             # Wait for redirect to dashboard
             page.wait_for_url("**/Dashboard**", timeout=30000)
