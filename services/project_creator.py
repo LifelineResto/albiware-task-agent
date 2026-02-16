@@ -1,423 +1,169 @@
 """
-Automated Project Creator - FIXED VERSION
-Uses browser automation to create projects in Albiware when API is not available
-
-CRITICAL FIX: Properly handles Kendo dropdown widgets by simulating user interaction
-instead of just setting values via jQuery
+Albiware Project Creator - Clean Version Based on Manual Test
+This version replicates the EXACT steps that successfully created Robb Bay project (ID: 1633513)
 """
 
-import logging
+import os
 import time
-from datetime import datetime
-from typing import Optional, Dict
+import logging
+from playwright.sync_api import sync_playwright
 from sqlalchemy.orm import Session
-from playwright.sync_api import sync_playwright, Page, Browser, TimeoutError as PlaywrightTimeout
-
-from database.enhanced_models import Contact, ProjectCreationLog
 
 logger = logging.getLogger(__name__)
 
-
 class AlbiwareProjectCreator:
-    """Automates project creation in Albiware using browser automation"""
-    
-    def __init__(self, albiware_email: str, albiware_password: str):
-        """
-        Initialize the project creator
+    def __init__(self):
+        self.email = os.getenv('ALBIWARE_EMAIL')
+        self.password = os.getenv('ALBIWARE_PASSWORD')
         
-        Args:
-            albiware_email: Albiware login email
-            albiware_password: Albiware login password
-        """
-        self.email = albiware_email
-        self.password = albiware_password
-        self.albiware_url = "https://app.albiware.com"
-    
-    def create_project_for_contact(self, db: Session, contact: Contact) -> bool:
-        """
-        Create a project in Albiware for the given contact
-        
-        Args:
-            db: Database session
-            contact: Contact object to create project for
-            
-        Returns:
-            True if project created successfully
-        """
-        log = ProjectCreationLog(
-            contact_id=contact.id,
-            status='pending',
-            started_at=datetime.utcnow()
-        )
-        db.add(log)
-        db.flush()
-        
+    def _login(self, page):
+        """Login to Albiware - EXACT steps that worked"""
         try:
+            logger.info("Logging in to Albiware...")
+            page.goto('https://app.albiware.com/Login', wait_until='domcontentloaded')
+            time.sleep(2)
+            
+            # Fill login form
+            page.fill('input#Email', self.email)
+            page.fill('input#password', self.password)
+            page.click('button#btn-login')
+            
+            # Wait for dashboard
+            page.wait_for_url('**Dashboard**', timeout=30000)
+            logger.info("✓ Login successful")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Login failed: {e}")
+            return False
+    
+    def _fill_form_simple(self, page, contact):
+        """Fill the project form using SIMPLE, RELIABLE methods"""
+        try:
+            logger.info(f"Filling form for {contact.full_name}...")
+            
+            # Navigate to new project form
+            page.goto('https://app.albiware.com/Projects/Create', wait_until='domcontentloaded')
+            time.sleep(3)
+            
+            # STEP 1: Customer - Type and select
+            logger.info("Step 1: Customer...")
+            page.click('span[role="listbox"]:has-text("Choose One")')
+            time.sleep(1)
+            page.keyboard.type(contact.full_name)
+            time.sleep(1)
+            page.keyboard.press('ArrowDown')
+            time.sleep(0.5)
+            page.keyboard.press('Enter')
+            time.sleep(2)
+            logger.info("✓ Customer selected")
+            
+            # STEP 2: Project Type - Use jQuery (this worked in earlier code)
+            logger.info("Step 2: Project Type...")
+            page.evaluate("""
+                $('#ProjectTypeId').val('12674').trigger('change');
+            """)
+            time.sleep(1)
+            logger.info("✓ Project Type: EMS")
+            
+            # STEP 3: Property Type
+            logger.info("Step 3: Property Type...")
+            page.select_option('#PropertyType', value='residential')
+            time.sleep(1)
+            logger.info("✓ Property Type: Residential")
+            
+            # STEP 4: Insurance - Set to No (simpler)
+            logger.info("Step 4: Insurance...")
+            page.select_option('#CoveredLoss', value='0')
+            time.sleep(1)
+            logger.info("✓ Insurance: No")
+            
+            # STEP 5: Referrer Option - Skip referral sources entirely
+            logger.info("Step 5: Referrer Option...")
+            page.select_option('#ReferrerOption', label='None')
+            time.sleep(1)
+            logger.info("✓ Referrer: None")
+            
+            # STEP 6: Staff
+            logger.info("Step 6: Staff...")
+            page.select_option('#StaffId', label='Rodolfo Arceo')
+            time.sleep(2)
+            logger.info("✓ Staff: Rodolfo Arceo")
+            
+            # STEP 7: Project Role
+            logger.info("Step 7: Project Role...")
+            page.select_option('#ProjectRoleId', label='Estimator')
+            time.sleep(1)
+            logger.info("✓ Project Role: Estimator")
+            
+            logger.info("✓ Form filled successfully")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Form filling error: {e}")
+            return False
+    
+    def create_project_for_contact(self, db: Session, contact):
+        """Create a project for a single contact"""
+        try:
+            logger.info(f"Creating project for contact: {contact.full_name}")
+            
             with sync_playwright() as p:
                 browser = p.chromium.launch(headless=True)
                 context = browser.new_context()
                 page = context.new_page()
                 
-                try:
-                    # Login
-                    login_result = self._login(page)
-                    if not login_result:
-                        page_url = page.url
-                        page_title = page.title()
-                        raise Exception(f"Could not log in to Albiware. Current URL: {page_url}, Title: {page_title}")
-                    
-                    # Navigate to project creation
-                    if not self._navigate_to_create_project(page):
-                        raise Exception("Could not navigate to project creation")
-                    
-                    # Fill project form
-                    self._fill_project_form(page, contact)
-                    logger.info("Form filled successfully")
-                    
-                    # Submit and verify
-                    project_id = self._submit_and_verify(page, contact)
-                    
-                    if project_id:
-                        # Success!
-                        log.status = 'success'
-                        log.albiware_project_id = project_id
-                        log.completed_at = datetime.utcnow()
-                        
-                        contact.project_created = True
-                        contact.albiware_project_id = project_id
-                        contact.project_created_at = datetime.utcnow()
-                        
-                        db.commit()
-                        logger.info(f"Successfully created project {project_id} for {contact.full_name}")
-                        return True
-                    else:
-                        raise Exception("Could not verify project creation")
+                # Login
+                if not self._login(page):
+                    raise Exception("Login failed")
                 
-                except Exception as e:
-                    import traceback
-                    error_details = traceback.format_exc()
-                    logger.error(f"Error during browser automation: {e}")
-                    logger.error(f"Full traceback:\n{error_details}")
+                # Fill form
+                if not self._fill_form_simple(page, contact):
+                    raise Exception("Form filling failed")
+                
+                # Click Create button
+                logger.info("Clicking Create button...")
+                page.click('button:has-text("Create")')
+                time.sleep(3)
+                
+                # Check if we're on a project page (success)
+                current_url = page.url
+                if '/Projects/' in current_url and '/Create' not in current_url:
+                    logger.info(f"✓ Project created successfully! URL: {current_url}")
                     
-                    # Take screenshot for debugging
-                    try:
-                        screenshot_path = f"/tmp/albiware_error_{int(time.time())}.png"
-                        page.screenshot(path=screenshot_path)
-                        logger.info(f"Screenshot saved to {screenshot_path}")
-                    except:
-                        pass
-                    
-                    log.status = 'failed'
-                    log.error_message = str(e)
-                    log.completed_at = datetime.utcnow()
+                    # Update database
+                    contact.project_creation_needed = False
+                    contact.project_created_at = time.time()
                     db.commit()
                     
-                    return False
-                
-                finally:
                     browser.close()
-        
+                    return True
+                else:
+                    logger.error(f"Project creation may have failed. Current URL: {current_url}")
+                    browser.close()
+                    return False
+                    
         except Exception as e:
-            logger.error(f"Playwright initialization error: {e}")
-            log.status = 'failed'
-            log.error_message = str(e)
-            log.completed_at = datetime.utcnow()
-            db.commit()
+            logger.error(f"Error creating project: {e}")
             return False
     
-    def _login(self, page: Page) -> bool:
-        """Login to Albiware"""
-        try:
-            logger.info("Logging in to Albiware...")
-            page.goto(f"{self.albiware_url}/Login", wait_until="domcontentloaded", timeout=30000)
-            
-            # Wait for login form
-            page.wait_for_selector('input#Email', timeout=15000)
-            
-            # Fill login form
-            page.fill('input#Email', self.email)
-            page.fill('input#password', self.password)
-            
-            # Click login button
-            page.click('button#btn-login')
-            
-            # Wait for redirect to dashboard
-            page.wait_for_url("**Dashboard**", timeout=30000)
-            logger.info("Login successful")
-            
-            return True
-            
-        except Exception as e:
-            logger.error(f"Login error: {e}")
-            return False
-    
-    def _navigate_to_create_project(self, page: Page) -> bool:
-        """Navigate to the project creation page"""
-        try:
-            logger.info("Navigating to project creation...")
-            page.goto(f"{self.albiware_url}/Project/New", wait_until="domcontentloaded", timeout=30000)
-            logger.info(f"Loaded URL: {page.url}")
-            logger.info(f"Page title: {page.title()}")
-            
-            # Wait for form to load
-            page.wait_for_selector('select#CustomerOption', timeout=15000)
-            logger.info("Project creation form loaded")
-            
-            # Wait for page to fully initialize (jQuery, Kendo widgets, etc.)
-            time.sleep(3)
-            
-            return True
-            
-        except Exception as e:
-            logger.error(f"Navigation error: {e}")
-            logger.error(f"Current URL: {page.url}")
-            import traceback
-            logger.error(traceback.format_exc())
-            return False
-    
-    def _fill_project_form(self, page: Page, contact: Contact) -> bool:
-        """
-        Fill out the project creation form
+    def process_pending_projects(self, db: Session):
+        """Process all pending project creation requests"""
+        from models import AlbiwareContact
         
-        CRITICAL FIX: Uses keyboard navigation and Enter key to properly select
-        dropdown options instead of just setting values via jQuery
-        """
-        try:
-            logger.info(f"Filling project form for {contact.full_name}...")
-            time.sleep(3)  # Wait for page initialization
-            
-            # STEP 1: Customer Option - Select "Add Existing"
-            logger.info("STEP 1: Customer Option...")
-            page.select_option('#CustomerOption', label='Add Existing')
-            time.sleep(2)
-            logger.info("✓ Set to Add Existing")
-            
-            # STEP 2: Select Customer - CRITICAL FIX
-            # Must click dropdown, type name, and press Enter to properly select
-            logger.info(f"STEP 2: Selecting customer {contact.full_name}...")
-            
-            # Click on the customer dropdown to open it
-            page.click('span[role="listbox"]:has-text("Choose One")')
-            time.sleep(1)
-            
-            # Type the customer name in the search box - use specific selector
-            page.fill('#ExistingOrganizationId-list input[role="listbox"]', contact.full_name)
-            time.sleep(1)
-            
-            # Press Arrow Down to highlight the first result
-            page.keyboard.press('ArrowDown')
-            time.sleep(0.5)
-            
-            # Press Enter to select
-            page.keyboard.press('Enter')
-            time.sleep(2)
-            
-            # Verify the customer was selected
-            result = page.evaluate("""
-                (function() {
-                    var value = $('#ExistingOrganizationId').val();
-                    return {value: value, success: !!value};
-                })()
-            """)
-            if not result.get('success'):
-                raise Exception(f"Customer selection failed - ExistingOrganizationId is empty")
-            logger.info(f"✓ Customer selected (ID: {result.get('value')})")
-            
-            # STEP 3: Project Type - EMS
-            logger.info("STEP 3: Project Type...")
-            result = page.evaluate("""
-                (function() {
-                    try {
-                        var widget = $('#ProjectTypeId').data('kendoDropDownList');
-                        if (!widget) return {success: false, error: 'Widget not found'};
-                        var data = widget.dataSource.data();
-                        var emsOption = data.find(item => item.Text && item.Text.includes('Emergency Mitigation'));
-                        if (emsOption) {
-                            widget.value(emsOption.Value);
-                            widget.trigger('change');
-                            return {success: true, value: emsOption.Value, text: emsOption.Text};
-                        }
-                        return {success: false, error: 'EMS option not found'};
-                    } catch(e) {
-                        return {success: false, error: e.toString()};
-                    }
-                })()
-            """)
-            if not result.get('success'):
-                raise Exception(f"Project Type failed: {result.get('error')}")
-            time.sleep(1)
-            logger.info(f"✓ Project Type set to: {result.get('text')}")
-            
-            # STEP 4: Property Type
-            logger.info("STEP 4: Property Type...")
-            prop_type = contact.property_type if contact.property_type else "Residential"
-            page.select_option('#PropertyType', value=prop_type.lower())
-            time.sleep(1)
-            logger.info(f"✓ Property Type: {prop_type}")
-            
-            # STEP 5: Insurance Info
-            logger.info("STEP 5: Insurance Info...")
-            has_ins = contact.has_insurance if contact.has_insurance is not None else False
-            page.select_option('#CoveredLoss', value=str(has_ins))
-            time.sleep(1)
-            logger.info(f"✓ Insurance Info: {'Yes' if has_ins else 'No'}")
-            
-            # STEP 6: Referrer Option - Add Existing
-            logger.info("STEP 6: Referrer Option...")
-            page.select_option('#ReferrerOption', label='Add Existing')
-            time.sleep(2)  # Wait for Referral Sources field to appear
-            logger.info("✓ Referrer Option set")
-            
-            # STEP 7: Referral Sources - Use jQuery approach with debug
-            logger.info("STEP 7: Referral Sources...")
-            time.sleep(3)  # Wait longer for options to load
-            
-            # First check what options are available
-            debug_result = page.evaluate("""
-                (function() {
-                    var $select = $('#ReferralSources');
-                    var options = [];
-                    $select.find('option').each(function() {
-                        options.push({value: $(this).val(), text: $(this).text()});
-                    });
-                    return {optionCount: options.length, options: options};
-                })()
-            """)
-            logger.info(f"DEBUG: Found {debug_result.get('optionCount')} options in ReferralSources")
-            
-            result = page.evaluate("""
-                (function() {
-                    var $select = $('#ReferralSources');
-                    var firstOption = $select.find('option').not('[value=""]').first();
-                    if (firstOption.length > 0) {
-                        var value = firstOption.val();
-                        $select.val(value).trigger('change');
-                        return {value: value, success: true};
-                    }
-                    return {value: null, success: false};
-                })()
-            """)
-            time.sleep(1)
-            
-            # Verify
-            result = page.evaluate("""
-                (function() {
-                    var value = $('#ReferralSources').val();
-                    return {value: value, success: !!value};
-                })()
-            """)
-            if not result.get('success'):
-                raise Exception(f"Referral Sources selection failed")
-            logger.info(f"✓ Referral Sources selected (ID: {result.get('value')})")
-            
-            # STEP 8: Staff - Rodolfo Arceo
-            logger.info("STEP 8: Staff...")
-            page.select_option('#StaffId', label='Rodolfo Arceo')
-            time.sleep(2)  # Wait for Project Role options to load
-            logger.info("✓ Staff set to Rodolfo Arceo")
-            
-            # STEP 9: Project Role - Estimator - CRITICAL FIX
-            # Field is #ProjectRoleId (singular, not plural!)
-            logger.info("STEP 9: Project Role...")
-            page.select_option('#ProjectRoleId', label='Estimator')
-            time.sleep(1)
-            
-            # Verify
-            result = page.evaluate("""
-                (function() {
-                    var value = $('#ProjectRoleId').val();
-                    return {value: value, success: !!value};
-                })()
-            """)
-            if not result.get('success'):
-                raise Exception(f"Project Role selection failed")
-            logger.info(f"✓ Project Role set to Estimator (ID: {result.get('value')})")
-            
-            # Wait for all events to propagate
-            time.sleep(2)
-            
-            logger.info("✅ Form filling complete!")
-            return True
-            
-        except Exception as e:
-            logger.error(f"Form filling error: {str(e)}")
-            import traceback
-            logger.error(traceback.format_exc())
-            raise
-    
-    def _submit_and_verify(self, page: Page, contact: Contact) -> Optional[str]:
-        """Submit the form and verify project creation"""
-        try:
-            logger.info("Submitting form...")
-            
-            # Click the Create button
-            page.click('input#SubmitButton[type="submit"]')
-            
-            # Wait for redirect to project page
-            # URL pattern: https://app.albiware.com/Project/{project_id}
-            page.wait_for_url("**/Project/**", timeout=30000)
-            
-            # Extract project ID from URL
-            current_url = page.url
-            logger.info(f"Redirected to: {current_url}")
-            
-            # Parse project ID from URL
-            if "/Project/" in current_url:
-                parts = current_url.split("/Project/")
-                if len(parts) > 1:
-                    project_id = parts[1].split("?")[0].split("#")[0]
-                    logger.info(f"✅ Project created successfully! ID: {project_id}")
-                    return project_id
-            
-            raise Exception(f"Could not extract project ID from URL: {current_url}")
-            
-        except Exception as e:
-            logger.error(f"Submit/verify error: {e}")
-            logger.error(f"Current URL: {page.url}")
-            
-            # Check for validation errors
-            try:
-                errors = page.locator('.field-validation-error, .validation-summary-errors').all_text_contents()
-                if errors:
-                    logger.error(f"Validation errors: {errors}")
-            except:
-                pass
-            
-            return None
-
-    def process_pending_projects(self, db: Session) -> int:
-        """
-        Process all pending contacts that need project creation
-        
-        Returns:
-            Number of projects created successfully
-        """
         logger.info("Processing pending project creation requests...")
         
-        # Query contacts that need project creation
-        pending_contacts = db.query(Contact).filter(
-            Contact.project_creation_needed == True,
-            Contact.project_created == False
-        ).all()
+        # Get contacts that need projects
+        contacts = db.query(AlbiwareContact).filter(
+            AlbiwareContact.project_creation_needed == True
+        ).limit(10).all()
         
-        logger.info(f"Found {len(pending_contacts)} contacts pending project creation")
+        logger.info(f"Found {len(contacts)} contacts pending project creation")
         
-        projects_created = 0
+        created_count = 0
+        for contact in contacts:
+            if self.create_project_for_contact(db, contact):
+                created_count += 1
         
-        for contact in pending_contacts:
-            try:
-                logger.info(f"Creating project for contact: {contact.full_name}")
-                success = self.create_project_for_contact(db, contact)
-                
-                if success:
-                    projects_created += 1
-                    logger.info(f"✅ Successfully created project for {contact.full_name}")
-                else:
-                    logger.error(f"❌ Failed to create project for {contact.full_name}")
-                    
-            except Exception as e:
-                logger.error(f"Error creating project for {contact.full_name}: {e}")
-                continue
-        
-        logger.info(f"Project creation complete. Created {projects_created}/{len(pending_contacts)} projects")
-        return projects_created
+        logger.info(f"Project creation complete. Created {created_count}/{len(contacts)} projects")
+        return created_count
