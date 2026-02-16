@@ -48,10 +48,9 @@ class AlbiwareProjectCreator:
             
             # STEP 1: Customer - Type and select
             logger.info("Step 1: Customer...")
-            page.click('span[role="listbox"]:has-text("Choose One")')
-            time.sleep(1)
-            page.keyboard.type(contact.full_name)
-            time.sleep(1)
+            # Fill the search input directly
+            page.fill('#ExistingOrganizationId-list input[role="listbox"]', contact.full_name)
+            time.sleep(2)
             page.keyboard.press('ArrowDown')
             time.sleep(0.5)
             page.keyboard.press('Enter')
