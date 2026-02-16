@@ -29,7 +29,7 @@ class AlbiwareProjectCreator:
             page.click('button#btn-login')
             
             # Wait for dashboard
-            page.wait_for_url('**Dashboard**', timeout=30000)
+            page.wait_for_url('**/TaskDashboard', timeout=30000)
             logger.info("✓ Login successful")
             return True
             
