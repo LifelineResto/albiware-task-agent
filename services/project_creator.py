@@ -268,12 +268,27 @@ class AlbiwareProjectCreator:
             time.sleep(2)  # Wait for Referral Sources field to appear
             logger.info("✓ Referrer Option set")
             
-            # STEP 7: Referral Sources - Use jQuery approach
+            # STEP 7: Referral Sources - Use jQuery approach with debug
             logger.info("STEP 7: Referral Sources...")
+            time.sleep(3)  # Wait longer for options to load
+            
+            # First check what options are available
+            debug_result = page.evaluate("""
+                (function() {
+                    var $select = $('#ReferralSources');
+                    var options = [];
+                    $select.find('option').each(function() {
+                        options.push({value: $(this).val(), text: $(this).text()});
+                    });
+                    return {optionCount: options.length, options: options};
+                })()
+            """)
+            logger.info(f"DEBUG: Found {debug_result.get('optionCount')} options in ReferralSources")
+            
             result = page.evaluate("""
                 (function() {
                     var $select = $('#ReferralSources');
-                    var firstOption = $select.find('option').not('[value=\"\"]').first();
+                    var firstOption = $select.find('option').not('[value=""]').first();
                     if (firstOption.length > 0) {
                         var value = firstOption.val();
                         $select.val(value).trigger('change');
