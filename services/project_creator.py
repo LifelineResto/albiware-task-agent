@@ -277,7 +277,7 @@ class AlbiwareProjectCreator:
             result = page.evaluate("""
                 (function() {
                     try {
-                        var widget = $('#ReferralSources').data('kendoDropDownList');
+                        var widget = $('#ProjectReferrer_ReferralSourceId').data('kendoDropDownList');
                         if (!widget) return {success: false, error: 'Widget not found'};
                         var data = widget.dataSource.data();
                         if (data && data.length > 0) {
@@ -296,16 +296,8 @@ class AlbiwareProjectCreator:
                 raise Exception(f"Referral Sources selection failed: {result.get('error')}")
             time.sleep(1)
             
-            # Verify
-            result = page.evaluate("""
-                (function() {
-                    var value = $('#ReferralSources').val();
-                    return {value: value, success: !!value};
-                })()
-            """)
-            if not result.get('success'):
-                raise Exception(f"Referral Sources selection failed")
-            logger.info(f"✓ Referral Sources selected (ID: {result.get('value')})")
+            # Log success
+            logger.info(f"✓ Referral Sources selected (ID: {result.get('value')}, Text: {result.get('text')})")
             
             # STEP 8: Staff - Rodolfo Arceo
             logger.info("STEP 8: Staff...")
