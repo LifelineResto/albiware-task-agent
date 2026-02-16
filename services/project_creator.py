@@ -99,13 +99,27 @@ class AlbiwareProjectCreator:
             time.sleep(1)
             logger.info("✓ Insurance: No")
             
-            # STEP 5: Referrer Option - Set to empty string (Choose One)
-            logger.info("Step 5: Referrer Option...")
+            # STEP 5: Referrer - Set to existing with required fields
+            logger.info("Step 5: Referrer...")
             page.evaluate("""
-                $('#ReferrerOption').val('').trigger('change');
+                // Set ReferrerOption to 'existing'
+                $('#ReferrerOption').val('existing').trigger('change');
             """)
             time.sleep(1)
-            logger.info("✓ Referrer: None")
+            
+            # Fill the three required referrer fields
+            page.evaluate("""
+                // Organization: Albiware LLC
+                $('#ProjectReferrer_OrganizationId').val('261061').trigger('change');
+                
+                // Referral Source: Agent
+                $('#ProjectReferrer_ReferralSourceId').val('28701').trigger('change');
+                
+                // Salesperson: Rodolfo Arceo
+                $('#ProjectReferrer_SalespersonId').val('14383').trigger('change');
+            """)
+            time.sleep(1)
+            logger.info("✓ Referrer: Albiware LLC / Agent / Rodolfo Arceo")
             
             # STEP 6: Staff - Rodolfo Arceo
             logger.info("Step 6: Staff...")
