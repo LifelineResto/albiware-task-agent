@@ -200,9 +200,8 @@ class AlbiwareProjectCreator:
             page.click('span[role="listbox"]:has-text("Choose One")')
             time.sleep(1)
             
-            # Type the customer name in the search box
-            search_input = page.locator('input[role="listbox"]')
-            search_input.fill(contact.full_name)
+            # Type the customer name in the search box - use specific selector
+            page.fill('#ExistingOrganizationId-list input[role="listbox"]', contact.full_name)
             time.sleep(1)
             
             # Press Arrow Down to highlight the first result
