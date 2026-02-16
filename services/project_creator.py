@@ -50,8 +50,8 @@ class AlbiwareProjectCreator:
             logger.info("Step 1: Customer...")
             # Show the customer field by manipulating the DOM
             page.evaluate("""
-                // Set CustomerOption to AddExisting using jQuery
-                $('#CustomerOption').val('AddExisting').trigger('change');
+                // Set CustomerOption to 'existing' using jQuery
+                $('#CustomerOption').val('existing').trigger('change');
                 
                 // Show the grandparent container
                 const existingOrgField = document.getElementById('ExistingOrganizationId');
@@ -91,10 +91,10 @@ class AlbiwareProjectCreator:
             time.sleep(1)
             logger.info("✓ Property Type: Residential")
             
-            # STEP 4: Insurance - Set to No (value should be '1' for No, '0' for Yes)
+            # STEP 4: Insurance - Set to No (value is 'False')
             logger.info("Step 4: Insurance...")
             page.evaluate("""
-                $('#CoveredLoss').val('1').trigger('change');
+                $('#CoveredLoss').val('False').trigger('change');
             """)
             time.sleep(1)
             logger.info("✓ Insurance: No")
