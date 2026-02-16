@@ -129,14 +129,14 @@ class AlbiwareProjectCreator:
         """Login to Albiware"""
         try:
             logger.info("Logging in to Albiware...")
-            page.goto(f"{self.albiware_url}/Account/Login", wait_until="domcontentloaded", timeout=30000)
+            page.goto(f"{self.albiware_url}/Login", wait_until="domcontentloaded", timeout=30000)
             
             # Wait for login form
             page.wait_for_selector('input#Email', timeout=15000)
             
             # Fill login form
             page.fill('input#Email', self.email)
-            page.fill('input#Password', self.password)
+            page.fill('input#password', self.password)
             
             # Click login button
             page.click('button[type="submit"]')
