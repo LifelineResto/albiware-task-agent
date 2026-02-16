@@ -269,41 +269,23 @@ class AlbiwareProjectCreator:
             time.sleep(2)  # Wait for Referral Sources field to appear
             logger.info("✓ Referrer Option set")
             
-            # STEP 7: Referral Sources - Wait for widget to initialize
+            # STEP 7: Referral Sources - Select2 dropdown
             logger.info("STEP 7: Referral Sources...")
             
-            # Wait for the Kendo widget to be initialized (retry up to 5 times)
-            result = None
-            for attempt in range(5):
-                time.sleep(1)  # Wait before each attempt
-                result = page.evaluate("""
-                    (function() {
-                        try {
-                            var widget = $('#ProjectReferrer_ReferralSourceId').data('kendoDropDownList');
-                            if (!widget) return {success: false, error: 'Widget not found'};
-                            var data = widget.dataSource.data();
-                            if (data && data.length > 0) {
-                                var firstOption = data[0];
-                                widget.value(firstOption.Value);
-                                widget.trigger('change');
-                                return {success: true, value: firstOption.Value, text: firstOption.Text};
-                            }
-                            return {success: false, error: 'No options available'};
-                        } catch(e) {
-                            return {success: false, error: e.toString()};
-                        }
-                    })()
-                """)
-                if result.get('success'):
-                    break
-                logger.info(f"Attempt {attempt + 1}/5: {result.get('error')}")
+            # Click on the Referral Sources Select2 dropdown to open it
+            referral_dropdowns = page.locator('span[role="listbox"]:has-text("Choose One")')
+            referral_dropdowns.nth(2).click()  # 3rd "Choose One" is Referral Sources
+            time.sleep(2)
             
-            if not result.get('success'):
-                raise Exception(f"Referral Sources selection failed after 5 attempts: {result.get('error')}")
-            time.sleep(1)
-            
-            # Log success
-            logger.info(f"✓ Referral Sources selected (ID: {result.get('value')}, Text: {result.get('text')})")
+            # Wait for dropdown results to appear and click the first one
+            try:
+                # Select2 dropdown results appear in a ul.select2-results__options
+                first_result = page.locator('ul.select2-results__options li').first
+                first_result.click(force=True)
+                time.sleep(1)
+                logger.info("✓ Referral Sources selected")
+            except Exception as e:
+                raise Exception(f"Failed to select Referral Sources: {str(e)}")
             
             # STEP 8: Staff - Rodolfo Arceo
             logger.info("STEP 8: Staff...")
