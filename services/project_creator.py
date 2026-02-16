@@ -269,31 +269,37 @@ class AlbiwareProjectCreator:
             time.sleep(2)  # Wait for Referral Sources field to appear
             logger.info("✓ Referrer Option set")
             
-            # STEP 7: Referral Sources - CRITICAL FIX
-            # Must click dropdown and select an option using keyboard
+            # STEP 7: Referral Sources - Wait for widget to initialize
             logger.info("STEP 7: Referral Sources...")
             
-            # Use JavaScript to select the first option from Referral Sources dropdown
-            result = page.evaluate("""
-                (function() {
-                    try {
-                        var widget = $('#ProjectReferrer_ReferralSourceId').data('kendoDropDownList');
-                        if (!widget) return {success: false, error: 'Widget not found'};
-                        var data = widget.dataSource.data();
-                        if (data && data.length > 0) {
-                            var firstOption = data[0];
-                            widget.value(firstOption.Value);
-                            widget.trigger('change');
-                            return {success: true, value: firstOption.Value, text: firstOption.Text};
+            # Wait for the Kendo widget to be initialized (retry up to 5 times)
+            result = None
+            for attempt in range(5):
+                time.sleep(1)  # Wait before each attempt
+                result = page.evaluate("""
+                    (function() {
+                        try {
+                            var widget = $('#ProjectReferrer_ReferralSourceId').data('kendoDropDownList');
+                            if (!widget) return {success: false, error: 'Widget not found'};
+                            var data = widget.dataSource.data();
+                            if (data && data.length > 0) {
+                                var firstOption = data[0];
+                                widget.value(firstOption.Value);
+                                widget.trigger('change');
+                                return {success: true, value: firstOption.Value, text: firstOption.Text};
+                            }
+                            return {success: false, error: 'No options available'};
+                        } catch(e) {
+                            return {success: false, error: e.toString()};
                         }
-                        return {success: false, error: 'No options available'};
-                    } catch(e) {
-                        return {success: false, error: e.toString()};
-                    }
-                })()
-            """)
+                    })()
+                """)
+                if result.get('success'):
+                    break
+                logger.info(f"Attempt {attempt + 1}/5: {result.get('error')}")
+            
             if not result.get('success'):
-                raise Exception(f"Referral Sources selection failed: {result.get('error')}")
+                raise Exception(f"Referral Sources selection failed after 5 attempts: {result.get('error')}")
             time.sleep(1)
             
             # Log success
