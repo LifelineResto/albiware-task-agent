@@ -142,7 +142,7 @@ class AlbiwareProjectCreator:
             page.click('button[type="submit"]')
             
             # Wait for redirect to dashboard
-            page.wait_for_url("**/Dashboard**", timeout=30000)
+            page.wait_for_url("**/TaskDashboard", timeout=30000)
             logger.info("Login successful")
             
             return True
