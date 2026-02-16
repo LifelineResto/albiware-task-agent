@@ -272,10 +272,9 @@ class AlbiwareProjectCreator:
             # Must click dropdown and select an option using keyboard
             logger.info("STEP 7: Referral Sources...")
             
-            # Click on the Referral Sources dropdown
-            referral_dropdowns = page.locator('span[role="listbox"]:has-text("Choose One")')
-            # Get the one in the Referrer Information section (should be the 3rd one)
-            referral_dropdowns.nth(2).click()
+            # Click on the Referral Sources dropdown using a more specific selector
+            # Target the span that's associated with #ReferralSources select
+            page.click('#ReferralSources-list span[role="listbox"]')
             time.sleep(1)
             
             # Press Arrow Down to select first option
