@@ -149,13 +149,13 @@ class AlbiwareProjectCreator:
     
     def process_pending_projects(self, db: Session):
         """Process all pending project creation requests"""
-        from models import AlbiwareContact
+        from database.enhanced_models import Contact
         
         logger.info("Processing pending project creation requests...")
         
         # Get contacts that need projects
-        contacts = db.query(AlbiwareContact).filter(
-            AlbiwareContact.project_creation_needed == True
+        contacts = db.query(Contact).filter(
+            Contact.project_creation_needed == True
         ).limit(10).all()
         
         logger.info(f"Found {len(contacts)} contacts pending project creation")
