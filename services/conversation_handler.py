@@ -74,6 +74,9 @@ class ConversationHandler:
             elif conversation.state == ConversationState.AWAITING_PROPERTY_TYPE:
                 return self._handle_property_type(db, conversation, message_body)
             
+            elif conversation.state == ConversationState.AWAITING_RESIDENTIAL_SUBTYPE:
+                return self._handle_residential_subtype(db, conversation, message_body)
+            
             elif conversation.state == ConversationState.AWAITING_INSURANCE:
                 return self._handle_insurance(db, conversation, message_body)
             
@@ -401,6 +404,70 @@ class ConversationHandler:
             return False
         
         contact.property_type = property_type
+        
+        # If Residential, ask for subtype; if Commercial, skip to insurance
+        if property_type == 'Residential':
+            conversation.state = ConversationState.AWAITING_RESIDENTIAL_SUBTYPE
+            
+            # Ask for residential subtype
+            self.sms_service.send_sms(
+                to_number=conversation.technician_phone,
+                message=(
+                    "What type of residential property?\n"
+                    "1 - Single Family Home\n"
+                    "2 - Multi-Family Home\n"
+                    "3 - Manufactured Home"
+                ),
+                contact_id=contact.id,
+                conversation_id=conversation.id,
+                db=db
+            )
+        else:
+            # Commercial - skip to insurance
+            conversation.state = ConversationState.AWAITING_INSURANCE
+            
+            # Ask about insurance
+            self.sms_service.send_sms(
+                to_number=conversation.technician_phone,
+                message="Do they have insurance? Reply YES or NO",
+                contact_id=contact.id,
+                conversation_id=conversation.id,
+                db=db
+            )
+        
+        conversation.last_message_at = datetime.utcnow()
+        db.commit()
+        return True
+    
+    def _handle_residential_subtype(self, db: Session, conversation: SMSConversation, message_body: str) -> bool:
+        """Handle residential subtype response"""
+        contact = conversation.contact
+        response = message_body.strip().lower()
+        
+        # Map response to residential subtype
+        if response == '1' or 'single' in response or 'single family' in response:
+            residential_subtype = 'Single Family Home'
+        elif response == '2' or 'multi' in response or 'multi-family' in response:
+            residential_subtype = 'Multi-Family Home'
+        elif response == '3' or 'manufactured' in response or 'mobile' in response or 'trailer' in response:
+            residential_subtype = 'Manufactured Home'
+        else:
+            # Invalid response
+            self.sms_service.send_sms(
+                to_number=conversation.technician_phone,
+                message=(
+                    "Please reply with:\n"
+                    "1 - Single Family Home\n"
+                    "2 - Multi-Family Home\n"
+                    "3 - Manufactured Home"
+                ),
+                contact_id=contact.id,
+                conversation_id=conversation.id,
+                db=db
+            )
+            return False
+        
+        contact.residential_subtype = residential_subtype
         conversation.state = ConversationState.AWAITING_INSURANCE
         
         # Ask about insurance

@@ -37,6 +37,7 @@ class ConversationState(str, enum.Enum):
     AWAITING_OUTCOME = "awaiting_outcome"
     AWAITING_PROJECT_TYPE = "awaiting_project_type"
     AWAITING_PROPERTY_TYPE = "awaiting_property_type"
+    AWAITING_RESIDENTIAL_SUBTYPE = "awaiting_residential_subtype"
     AWAITING_INSURANCE = "awaiting_insurance"
     AWAITING_INSURANCE_COMPANY = "awaiting_insurance_company"
     AWAITING_REFERRAL_SOURCE = "awaiting_referral_source"
@@ -82,6 +83,7 @@ class Contact(Base):
     # Project Details (collected from SMS)
     project_type = Column(String(100), nullable=True)  # Water, Fire, Mold, Other
     property_type = Column(String(50), nullable=True)  # Residential, Commercial
+    residential_subtype = Column(String(50), nullable=True)  # Single Family, Multi-Family, Manufactured
     has_insurance = Column(Boolean, nullable=True)
     insurance_company = Column(String(200), nullable=True)
     referral_source = Column(String(100), nullable=True)  # Google, Yelp, Referral, Other
