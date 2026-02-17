@@ -817,63 +817,63 @@ class ConversationHandler:
                     )
                 else:
                     # No conflict - create appointment
-                event_id = calendar_service.create_appointment(
-                    customer_name=contact.full_name or "Unknown Customer",
-                    customer_address=contact.address or "",
-                    appointment_datetime=appointment_dt,
-                    duration_hours=2,
-                    description=f"Appointment set by {conversation.technician_phone}"
-                )
-                
-                if event_id:
-                    contact.appointment_created_in_calendar = True
-                    contact.calendar_event_id = event_id
+                    event_id = calendar_service.create_appointment(
+                        customer_name=contact.full_name or "Unknown Customer",
+                        customer_address=contact.address or "",
+                        appointment_datetime=appointment_dt,
+                        duration_hours=2,
+                        description=f"Appointment set by {conversation.technician_phone}"
+                    )
                     
-                    formatted_dt = DateTimeParser.format_datetime_for_sms(appointment_dt)
+                    if event_id:
+                        contact.appointment_created_in_calendar = True
+                        contact.calendar_event_id = event_id
+                        
+                        formatted_dt = DateTimeParser.format_datetime_for_sms(appointment_dt)
+                        self.sms_service.send_sms(
+                            to_number=conversation.technician_phone,
+                            message=(
+                                f"✓ Appointment added to calendar for {contact.full_name} on {formatted_dt}\n\n"
+                                f"Now I need a few details to create the project."
+                            ),
+                            contact_id=contact.id,
+                            conversation_id=conversation.id,
+                            db=db
+                        )
+                    else:
+                        # Calendar creation failed - continue anyway
+                        logger.warning(f"Failed to create calendar appointment for {contact.full_name}")
+                        self.sms_service.send_sms(
+                            to_number=conversation.technician_phone,
+                            message=(
+                                f"Note: Couldn't add to calendar automatically, but I'll continue.\n\n"
+                                f"Now I need a few details to create the project."
+                            ),
+                            contact_id=contact.id,
+                            conversation_id=conversation.id,
+                            db=db
+                        )
+                    
+                    # Move to project type question
+                    conversation.state = ConversationState.AWAITING_PROJECT_TYPE
+                    
+                    # Ask for project type
                     self.sms_service.send_sms(
                         to_number=conversation.technician_phone,
                         message=(
-                            f"✓ Appointment added to calendar for {contact.full_name} on {formatted_dt}\n\n"
-                            f"Now I need a few details to create the project."
+                            "What type of project?\n"
+                            "1 - Emergency Mitigation Services\n"
+                            "2 - Mold\n"
+                            "3 - Reconstruction\n"
+                            "4 - Sewage\n"
+                            "5 - Biohazard\n"
+                            "6 - Contents\n"
+                            "7 - Vandalism"
                         ),
                         contact_id=contact.id,
                         conversation_id=conversation.id,
                         db=db
                     )
-                else:
-                    # Calendar creation failed - continue anyway
-                    logger.warning(f"Failed to create calendar appointment for {contact.full_name}")
-                    self.sms_service.send_sms(
-                        to_number=conversation.technician_phone,
-                        message=(
-                            f"Note: Couldn't add to calendar automatically, but I'll continue.\n\n"
-                            f"Now I need a few details to create the project."
-                        ),
-                        contact_id=contact.id,
-                        conversation_id=conversation.id,
-                        db=db
-                    )
-            
-            # Move to project type question
-            conversation.state = ConversationState.AWAITING_PROJECT_TYPE
-            
-            # Ask for project type
-            self.sms_service.send_sms(
-                to_number=conversation.technician_phone,
-                message=(
-                    "What type of project?\n"
-                    "1 - Emergency Mitigation Services\n"
-                    "2 - Mold\n"
-                    "3 - Reconstruction\n"
-                    "4 - Sewage\n"
-                    "5 - Biohazard\n"
-                    "6 - Contents\n"
-                    "7 - Vandalism"
-                ),
-                contact_id=contact.id,
-                conversation_id=conversation.id,
-                db=db
-            )
             
         except Exception as e:
             logger.error(f"Error creating calendar appointment: {e}")
