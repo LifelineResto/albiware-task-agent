@@ -361,3 +361,32 @@ class AlbiwareProjectCreator:
                 pass
             
             return None
+
+    def process_pending_projects(self, db: Session) -> int:
+        """Process all contacts that need project creation"""
+        from models import Contact
+        
+        # Query contacts that need project creation
+        contacts = db.query(Contact).filter(
+            Contact.project_creation_needed == True,
+            Contact.project_created == False
+        ).all()
+        
+        logger.info(f"Found {len(contacts)} contacts needing project creation")
+        
+        projects_created = 0
+        for contact in contacts:
+            try:
+                logger.info(f"Processing contact: {contact.full_name} (ID: {contact.id})")
+                success = self.create_project_for_contact(db, contact)
+                if success:
+                    projects_created += 1
+                    logger.info(f"✅ Successfully created project for {contact.full_name}")
+                else:
+                    logger.error(f"❌ Failed to create project for {contact.full_name}")
+            except Exception as e:
+                logger.error(f"Error processing contact {contact.id}: {e}")
+                continue
+        
+        logger.info(f"Project creation complete. Created {projects_created} projects.")
+        return projects_created
