@@ -92,6 +92,9 @@ class ConversationHandler:
             elif conversation.state == ConversationState.AWAITING_REFERRAL_SOURCE:
                 return self._handle_referral_source(db, conversation, message_body)
             
+            elif conversation.state == ConversationState.AWAITING_APPOINTMENT_RESULT:
+                return self._handle_appointment_result(db, conversation, message_body)
+            
             else:
                 logger.warning(f"Unknown conversation state: {conversation.state}")
                 return False
@@ -976,6 +979,75 @@ class ConversationHandler:
                     "4 - Lead Gen\n"
                     "5 - Online Marketing\n"
                     "6 - Plumber"
+                ),
+                contact_id=contact.id,
+                conversation_id=conversation.id,
+                db=db
+            )
+            return False
+
+    def _handle_appointment_result(self, db: Session, conversation: SMSConversation, message_body: str) -> bool:
+        """Handle post-appointment result response"""
+        contact = conversation.contact
+        response = message_body.strip().lower()
+        
+        # Map response to appointment result
+        result_map = {
+            '1': 'work_started',
+            '2': 'scheduled_work_start',
+            '3': 'scheduled_another_appointment',
+            '4': 'undetermined'
+        }
+        
+        keywords = ['work', 'start', 'schedule', 'appointment', 'undetermined', 'unknown']
+        
+        if response in result_map or any(keyword in response for keyword in keywords):
+            if response in result_map:
+                result = result_map[response]
+            elif 'work' in response and 'start' in response:
+                result = 'work_started'
+            elif 'schedule' in response and ('work' in response or 'start' in response):
+                result = 'scheduled_work_start'
+            elif 'schedule' in response and 'appointment' in response:
+                result = 'scheduled_another_appointment'
+            else:
+                result = 'undetermined'
+            
+            contact.appointment_result = result
+            
+            # Mark conversation as completed
+            conversation.state = ConversationState.COMPLETED
+            conversation.completed_at = datetime.utcnow()
+            
+            # Send confirmation based on result
+            result_messages = {
+                'work_started': f"✓ Got it! Work has started for {contact.full_name}. I've updated the records.",
+                'scheduled_work_start': f"✓ Great! I've noted that work start date has been scheduled for {contact.full_name}.",
+                'scheduled_another_appointment': f"✓ Understood. Another appointment has been scheduled for {contact.full_name}.",
+                'undetermined': f"✓ Noted. I've marked the appointment result as undetermined for {contact.full_name}."
+            }
+            
+            self.sms_service.send_sms(
+                to_number=conversation.technician_phone,
+                message=result_messages.get(result, "Thank you for the update!"),
+                contact_id=contact.id,
+                conversation_id=conversation.id,
+                db=db
+            )
+            
+            conversation.last_message_at = datetime.utcnow()
+            db.commit()
+            return True
+        else:
+            # Invalid response
+            self.sms_service.send_sms(
+                to_number=conversation.technician_phone,
+                message=(
+                    "Please reply with:\n"
+                    "1 - Work started\n"
+                    "2 - Scheduled work start date\n"
+                    "3 - Scheduled another appointment\n"
+                    "4 - Undetermined"
                 ),
                 contact_id=contact.id,
                 conversation_id=conversation.id,

@@ -174,6 +174,24 @@ def scheduled_retry_persistence():
         db.close()
 
 
+def scheduled_appointment_monitor():
+    """Scheduled task to monitor completed appointments and send follow-ups."""
+    logger.info("Starting scheduled appointment monitoring...")
+    
+    db_gen = database.get_session()
+    db = next(db_gen)
+    
+    try:
+        from services.appointment_monitor import AppointmentMonitor
+        follow_ups_sent = AppointmentMonitor.process_pending_follow_ups(db, sms_service)
+        logger.info(f"Sent {follow_ups_sent} post-appointment follow-ups")
+        
+    except Exception as e:
+        logger.error(f"Error in scheduled appointment monitoring: {e}")
+    finally:
+        db.close()
+
+
 @app.on_event("startup")
 async def startup_event():
     """Initialize database and start scheduler on application startup."""
@@ -216,6 +234,15 @@ async def startup_event():
         trigger=IntervalTrigger(minutes=5),
         id='retry_persistence_job',
         name='Process retries and persistence follow-ups',
+        replace_existing=True
+    )
+    
+    # Start appointment monitor scheduler (every 10 minutes to check for completed appointments)
+    scheduler.add_job(
+        scheduled_appointment_monitor,
+        trigger=IntervalTrigger(minutes=10),
+        id='appointment_monitor_job',
+        name='Monitor completed appointments and send follow-ups',
         replace_existing=True
     )
     

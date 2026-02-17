@@ -43,6 +43,7 @@ class ConversationState(str, enum.Enum):
     AWAITING_APPOINTMENT_DATETIME = "awaiting_appointment_datetime"
     AWAITING_APPOINTMENT_CONFLICT_CONFIRMATION = "awaiting_appointment_conflict_confirmation"
     AWAITING_REFERRAL_SOURCE = "awaiting_referral_source"
+    AWAITING_APPOINTMENT_RESULT = "awaiting_appointment_result"
     COMPLETED = "completed"
 
 
@@ -98,6 +99,12 @@ class Contact(Base):
     appointment_datetime = Column(DateTime, nullable=True)  # Scheduled appointment date/time
     appointment_created_in_calendar = Column(Boolean, default=False)  # Whether calendar event was created
     calendar_event_id = Column(String(200), nullable=True)  # Google Calendar event ID
+    
+    # Post-Appointment Follow-up
+    appointment_completed = Column(Boolean, default=False)  # Whether appointment has ended
+    appointment_follow_up_sent = Column(Boolean, default=False)  # Whether follow-up SMS was sent
+    appointment_follow_up_sent_at = Column(DateTime, nullable=True)  # When follow-up was sent
+    appointment_result = Column(String(100), nullable=True)  # Result: work_started, scheduled_work_start, scheduled_another_appointment, undetermined
     
     # Follow-up Retry & Persistence Mode
     retry_count = Column(Integer, default=0)  # Number of times we've retried after NO response
