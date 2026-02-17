@@ -234,13 +234,13 @@ class AlbiwareProjectCreator:
             logger.info("STEP 2.5: Referral Sources...")
             
             # Click on the Referral Sources dropdown to open it
-            # Find the span with role="listbox" that's associated with ProjectReferrer_ReferralSourceId
-            page.click('select#ProjectReferrer_ReferralSourceId + span[role="listbox"]')
+            # The field ID is ExistingReferralSourceId (not ProjectReferrer_ReferralSourceId)
+            page.click('span[aria-owns="ExistingReferralSourceId_listbox"]')
             time.sleep(1)
             
-            # Type "Agent" in the search box
-            search_input = page.locator('input[role="searchbox"]').last
-            search_input.fill('Agent')
+            # Type "Plumber" in the search box
+            search_input = page.locator('#ExistingReferralSourceId-list input[role="listbox"]')
+            search_input.fill('Plumber')
             time.sleep(1)
             
             # Press Arrow Down to highlight the first result
@@ -254,13 +254,13 @@ class AlbiwareProjectCreator:
             # Verify the selection
             result = page.evaluate("""
                 (function() {
-                    var value = $('#ProjectReferrer_ReferralSourceId').val();
+                    var value = $('#ExistingReferralSourceId').val();
                     return {value: value, success: !!value};
                 })()
             """)
             if not result.get('success'):
                 raise Exception(f"Referral Sources selection failed - value is empty")
-            logger.info(f"✓ Referral Sources selected: Agent (ID: {result.get('value')})")
+            logger.info(f"✓ Referral Sources selected: Plumber (ID: {result.get('value')})")
             
             # STEP 3: Project Type - EMS
             logger.info("STEP 3: Project Type...")
