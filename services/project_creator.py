@@ -366,13 +366,22 @@ class AlbiwareProjectCreator:
         """Process all contacts that need project creation"""
         from database.enhanced_models import Contact
         
+        logger.info("=" * 50)
+        logger.info("STARTING PROJECT CREATION AUTOMATION")
+        logger.info("=" * 50)
+        
         # Query contacts that need project creation
         contacts = db.query(Contact).filter(
             Contact.project_creation_needed == True,
             Contact.project_created == False
         ).all()
         
-        logger.info(f"Found {len(contacts)} contacts needing project creation")
+        logger.info(f"Query returned {len(contacts)} contacts needing project creation")
+        if contacts:
+            for c in contacts:
+                logger.info(f"  - Contact {c.id}: {c.full_name}, project_creation_needed={c.project_creation_needed}, project_created={c.project_created}")
+        else:
+            logger.warning("No contacts found matching criteria!")
         
         projects_created = 0
         for contact in contacts:
