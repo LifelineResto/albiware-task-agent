@@ -364,7 +364,7 @@ class AlbiwareProjectCreator:
 
     def process_pending_projects(self, db: Session) -> int:
         """Process all contacts that need project creation"""
-        from models import Contact
+        from database.enhanced_models import Contact
         
         # Query contacts that need project creation
         contacts = db.query(Contact).filter(
