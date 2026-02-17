@@ -95,6 +95,15 @@ class ConversationHandler:
             elif conversation.state == ConversationState.AWAITING_APPOINTMENT_RESULT:
                 return self._handle_appointment_result(db, conversation, message_body)
             
+            elif conversation.state == ConversationState.AWAITING_WORK_START_DATETIME:
+                return self._handle_work_start_datetime(db, conversation, message_body)
+            
+            elif conversation.state == ConversationState.AWAITING_EQUIPMENT_CONFIRMATION:
+                return self._handle_equipment_confirmation(db, conversation, message_body)
+            
+            elif conversation.state == ConversationState.AWAITING_EQUIPMENT_LIST:
+                return self._handle_equipment_list(db, conversation, message_body)
+            
             else:
                 logger.warning(f"Unknown conversation state: {conversation.state}")
                 return False
@@ -1015,25 +1024,46 @@ class ConversationHandler:
             
             contact.appointment_result = result
             
-            # Mark conversation as completed
-            conversation.state = ConversationState.COMPLETED
-            conversation.completed_at = datetime.utcnow()
-            
-            # Send confirmation based on result
-            result_messages = {
-                'work_started': f"✓ Got it! Work has started for {contact.full_name}. I've updated the records.",
-                'scheduled_work_start': f"✓ Great! I've noted that work start date has been scheduled for {contact.full_name}.",
-                'scheduled_another_appointment': f"✓ Understood. Another appointment has been scheduled for {contact.full_name}.",
-                'undetermined': f"✓ Noted. I've marked the appointment result as undetermined for {contact.full_name}."
-            }
-            
-            self.sms_service.send_sms(
-                to_number=conversation.technician_phone,
-                message=result_messages.get(result, "Thank you for the update!"),
-                contact_id=contact.id,
-                conversation_id=conversation.id,
-                db=db
-            )
+            # If work started, ask about equipment
+            if result == 'work_started':
+                conversation.state = ConversationState.AWAITING_EQUIPMENT_CONFIRMATION
+                
+                self.sms_service.send_sms(
+                    to_number=conversation.technician_phone,
+                    message=f"Will any equipment be left at the address? Reply YES or NO",
+                    contact_id=contact.id,
+                    conversation_id=conversation.id,
+                    db=db
+                )
+            elif result == 'scheduled_work_start':
+                # Ask for work start date/time
+                conversation.state = ConversationState.AWAITING_WORK_START_DATETIME
+                
+                self.sms_service.send_sms(
+                    to_number=conversation.technician_phone,
+                    message=f"Great! When is the work start date for {contact.full_name}? Please provide the date and time (e.g., '02/25/2026 8:00 AM' or 'next Monday at 9am')",
+                    contact_id=contact.id,
+                    conversation_id=conversation.id,
+                    db=db
+                )
+            else:
+                # For other results, mark conversation as completed
+                conversation.state = ConversationState.COMPLETED
+                conversation.completed_at = datetime.utcnow()
+                
+                # Send confirmation based on result
+                result_messages = {
+                    'scheduled_another_appointment': f"✓ Understood. Another appointment has been scheduled for {contact.full_name}.",
+                    'undetermined': f"✓ Noted. I've marked the appointment result as undetermined for {contact.full_name}."
+                }
+                
+                self.sms_service.send_sms(
+                    to_number=conversation.technician_phone,
+                    message=result_messages.get(result, "Thank you for the update!"),
+                    contact_id=contact.id,
+                    conversation_id=conversation.id,
+                    db=db
+                )
             
             conversation.last_message_at = datetime.utcnow()
             db.commit()
@@ -1049,6 +1079,205 @@ class ConversationHandler:
                     "3 - Scheduled another appointment\n"
                     "4 - Undetermined"
                 ),
+                contact_id=contact.id,
+                conversation_id=conversation.id,
+                db=db
+            )
+            return False
+
+    def _handle_equipment_confirmation(self, db: Session, conversation: SMSConversation, message_body: str) -> bool:
+        """Handle YES/NO response for equipment left at address"""
+        contact = conversation.contact
+        response = message_body.strip().upper()
+        
+        if response == 'YES' or response == 'Y':
+            contact.equipment_left_at_address = True
+            conversation.state = ConversationState.AWAITING_EQUIPMENT_LIST
+            
+            self.sms_service.send_sms(
+                to_number=conversation.technician_phone,
+                message="Please list the equipment type and amount (e.g., '1 dehumidifier and 4 air movers' or '2 dehumidifiers, 6 air movers, 1 air scrubber')",
+                contact_id=contact.id,
+                conversation_id=conversation.id,
+                db=db
+            )
+            
+            conversation.last_message_at = datetime.utcnow()
+            db.commit()
+            return True
+            
+        elif response == 'NO' or response == 'N':
+            contact.equipment_left_at_address = False
+            
+            # Mark conversation as completed
+            conversation.state = ConversationState.COMPLETED
+            conversation.completed_at = datetime.utcnow()
+            
+            self.sms_service.send_sms(
+                to_number=conversation.technician_phone,
+                message=f"✓ Got it! Work has started for {contact.full_name} with no equipment left at the address. I've updated the records.",
+                contact_id=contact.id,
+                conversation_id=conversation.id,
+                db=db
+            )
+            
+            conversation.last_message_at = datetime.utcnow()
+            db.commit()
+            return True
+        else:
+            # Invalid response
+            self.sms_service.send_sms(
+                to_number=conversation.technician_phone,
+                message="Please reply YES if equipment was left at the address, or NO if no equipment was left.",
+                contact_id=contact.id,
+                conversation_id=conversation.id,
+                db=db
+            )
+            return False
+    
+    def _handle_equipment_list(self, db: Session, conversation: SMSConversation, message_body: str) -> bool:
+        """Handle equipment list response"""
+        contact = conversation.contact
+        equipment_list = message_body.strip()
+        
+        if len(equipment_list) > 0:
+            contact.equipment_list = equipment_list
+            
+            # Mark conversation as completed
+            conversation.state = ConversationState.COMPLETED
+            conversation.completed_at = datetime.utcnow()
+            
+            # Log to Google Sheets (will be implemented in next phase)
+            try:
+                from services.google_sheets_service import GoogleSheetsService
+                sheets_service = GoogleSheetsService()
+                sheets_service.log_equipment(
+                    customer_name=contact.full_name or "Unknown",
+                    address=contact.address or "Unknown",
+                    date=datetime.utcnow(),
+                    equipment_list=equipment_list
+                )
+                logger.info(f"Logged equipment to Google Sheets for {contact.full_name}")
+            except Exception as e:
+                logger.error(f"Failed to log equipment to Google Sheets: {e}")
+                # Continue even if Google Sheets logging fails
+            
+            self.sms_service.send_sms(
+                to_number=conversation.technician_phone,
+                message=(
+                    f"✓ Perfect! I've recorded the equipment for {contact.full_name}:\n"
+                    f"{equipment_list}\n\n"
+                    f"Everything has been logged and updated."
+                ),
+                contact_id=contact.id,
+                conversation_id=conversation.id,
+                db=db
+            )
+            
+            conversation.last_message_at = datetime.utcnow()
+            db.commit()
+            return True
+        else:
+            # Empty response
+            self.sms_service.send_sms(
+                to_number=conversation.technician_phone,
+                message="Please provide the equipment list (e.g., '1 dehumidifier and 4 air movers')",
+                contact_id=contact.id,
+                conversation_id=conversation.id,
+                db=db
+            )
+            return False
+
+    def _handle_work_start_datetime(self, db: Session, conversation: SMSConversation, message_body: str) -> bool:
+        """Handle work start date/time response and create Mitigation Start calendar appointment"""
+        contact = conversation.contact
+        datetime_str = message_body.strip()
+        
+        try:
+            from utils.datetime_parser import parse_datetime
+            from services.google_calendar_service import GoogleCalendarService
+            
+            # Parse the date/time
+            parsed_datetime = parse_datetime(datetime_str)
+            
+            if not parsed_datetime:
+                self.sms_service.send_sms(
+                    to_number=conversation.technician_phone,
+                    message="I couldn't understand that date/time. Please try again (e.g., '02/25/2026 8:00 AM' or 'next Monday at 9am')",
+                    contact_id=contact.id,
+                    conversation_id=conversation.id,
+                    db=db
+                )
+                return False
+            
+            # Create calendar appointment for Mitigation Start
+            calendar_service = GoogleCalendarService()
+            
+            # Create appointment title with customer info
+            appointment_title = f"Mitigation Start - {contact.full_name}"
+            if contact.address:
+                appointment_description = f"Address: {contact.address}"
+            else:
+                appointment_description = "Mitigation start appointment"
+            
+            # Create the calendar event
+            event_id = calendar_service.create_appointment(
+                title=appointment_title,
+                description=appointment_description,
+                start_datetime=parsed_datetime,
+                duration_hours=2,
+                attendees=["alanpotter@lifelinerestoration.net", "rodolfoarceo@lifelinerestoration.net"]
+            )
+            
+            if event_id:
+                # Store appointment details
+                contact.appointment_datetime = parsed_datetime
+                contact.appointment_created_in_calendar = True
+                contact.calendar_event_id = event_id
+                contact.appointment_completed = False  # Reset for new appointment
+                contact.appointment_follow_up_sent = False  # Reset for new appointment
+                
+                # Mark conversation as completed
+                conversation.state = ConversationState.COMPLETED
+                conversation.completed_at = datetime.utcnow()
+                
+                # Format date for SMS
+                formatted_date = parsed_datetime.strftime('%m/%d/%Y %I:%M %p')
+                
+                self.sms_service.send_sms(
+                    to_number=conversation.technician_phone,
+                    message=(
+                        f"✓ Mitigation Start appointment created for {contact.full_name}\n"
+                        f"Date/Time: {formatted_date}\n"
+                        f"Address: {contact.address or 'Not provided'}\n\n"
+                        f"The appointment has been added to the calendar."
+                    ),
+                    contact_id=contact.id,
+                    conversation_id=conversation.id,
+                    db=db
+                )
+                
+                conversation.last_message_at = datetime.utcnow()
+                db.commit()
+                
+                logger.info(f"Created Mitigation Start appointment for {contact.full_name} at {formatted_date}")
+                return True
+            else:
+                # Calendar creation failed
+                self.sms_service.send_sms(
+                    to_number=conversation.technician_phone,
+                    message="Sorry, I couldn't create the calendar appointment. Please try again or contact support.",
+                    contact_id=contact.id,
+                    conversation_id=conversation.id,
+                    db=db
+                )
+                return False
+                
+        except Exception as e:
+            logger.error(f"Error handling work start datetime: {e}")
+            self.sms_service.send_sms(
+                to_number=conversation.technician_phone,
+                message="Sorry, there was an error processing the date/time. Please try again.",
                 contact_id=contact.id,
                 conversation_id=conversation.id,
                 db=db

@@ -44,6 +44,9 @@ class ConversationState(str, enum.Enum):
     AWAITING_APPOINTMENT_CONFLICT_CONFIRMATION = "awaiting_appointment_conflict_confirmation"
     AWAITING_REFERRAL_SOURCE = "awaiting_referral_source"
     AWAITING_APPOINTMENT_RESULT = "awaiting_appointment_result"
+    AWAITING_WORK_START_DATETIME = "awaiting_work_start_datetime"
+    AWAITING_EQUIPMENT_CONFIRMATION = "awaiting_equipment_confirmation"
+    AWAITING_EQUIPMENT_LIST = "awaiting_equipment_list"
     COMPLETED = "completed"
 
 
@@ -105,6 +108,10 @@ class Contact(Base):
     appointment_follow_up_sent = Column(Boolean, default=False)  # Whether follow-up SMS was sent
     appointment_follow_up_sent_at = Column(DateTime, nullable=True)  # When follow-up was sent
     appointment_result = Column(String(100), nullable=True)  # Result: work_started, scheduled_work_start, scheduled_another_appointment, undetermined
+    
+    # Equipment Tracking (for work_started appointments)
+    equipment_left_at_address = Column(Boolean, nullable=True)  # Whether equipment was left at customer address
+    equipment_list = Column(Text, nullable=True)  # List of equipment left (e.g., "1 dehumidifier, 4 air movers")
     
     # Follow-up Retry & Persistence Mode
     retry_count = Column(Integer, default=0)  # Number of times we've retried after NO response
