@@ -276,6 +276,7 @@ class AlbiwareProjectCreator:
             # STEP 5: Insurance Info
             logger.info("STEP 5: Insurance Info...")
             has_ins = contact.has_insurance if contact.has_insurance is not None else False
+            logger.info(f"DEBUG: contact.has_insurance = {contact.has_insurance}, has_ins = {has_ins}, str(has_ins) = {str(has_ins)}")
             page.select_option('#CoveredLoss', value=str(has_ins))
             time.sleep(1)
             logger.info(f"✓ Insurance Info: {'Yes' if has_ins else 'No'}")
