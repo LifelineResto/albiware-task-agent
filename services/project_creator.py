@@ -277,11 +277,12 @@ class AlbiwareProjectCreator:
             referral_dropdowns.nth(2).click()  # 3rd "Choose One" is Referral Sources
             time.sleep(2)
             
-            # Wait for dropdown results to appear and click the first one
+            # Wait for dropdown results to appear and click the first REAL option (skip "Choose One")
             try:
                 # Select2 dropdown results appear in a ul.select2-results__options
-                first_result = page.locator('ul.select2-results__options li').first
-                first_result.click(force=True)
+                # The first li is "Choose One", so we need the second one (index 1)
+                first_real_option = page.locator('ul.select2-results__options li').nth(1)
+                first_real_option.click(force=True)
                 time.sleep(1)
                 logger.info("✓ Referral Sources selected")
             except Exception as e:
