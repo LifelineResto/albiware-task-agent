@@ -320,11 +320,39 @@ class AlbiwareProjectCreator:
         try:
             logger.info("Submitting form...")
             
+            # Check for any validation errors BEFORE submission
+            try:
+                errors_before = page.locator('.field-validation-error, .validation-summary-errors').all_text_contents()
+                if errors_before:
+                    logger.error(f"Validation errors BEFORE submit: {errors_before}")
+                    return None
+            except:
+                pass
+            
             # Click the Create button
+            logger.info("Clicking Create button...")
             page.click('input#SubmitButton[type="submit"]')
+            logger.info("Create button clicked, waiting for response...")
+            
+            # Wait a moment for the page to process
+            time.sleep(3)
+            
+            # Check current URL immediately after click
+            current_url_after_click = page.url
+            logger.info(f"URL after clicking Create: {current_url_after_click}")
+            
+            # Check for validation errors AFTER submission
+            try:
+                errors_after = page.locator('.field-validation-error, .validation-summary-errors').all_text_contents()
+                if errors_after:
+                    logger.error(f"Validation errors AFTER submit: {errors_after}")
+                    return None
+            except:
+                pass
             
             # Wait for redirect to project page
             # URL pattern: https://app.albiware.com/Project/{project_id}
+            logger.info("Waiting for redirect to project page...")
             page.wait_for_url("**/Project/**", timeout=30000)
             
             # Extract project ID from URL
