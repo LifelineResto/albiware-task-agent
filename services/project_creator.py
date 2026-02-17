@@ -233,22 +233,13 @@ class AlbiwareProjectCreator:
             # STEP 2.5: Referral Sources - Select2 dropdown (MOVED UP FOR TESTING)
             logger.info("STEP 2.5: Referral Sources...")
             
-            # Click on the Referral Sources Select2 dropdown by targeting the specific field
-            # The field ID is ProjectReferrer_ReferralSourceId
-            referral_sources_dropdown = page.locator('#select2-ProjectReferrer_ReferralSourceId-container')
-            referral_sources_dropdown.click()
-            time.sleep(2)
-            
-            # Wait for dropdown results to appear and click on "Agent" specifically
-            try:
-                # Select2 dropdown results appear in a ul.select2-results__options
-                # Click on the option with text "Agent"
-                agent_option = page.locator('ul.select2-results__options li:has-text("Agent")')
-                agent_option.click(force=True)
-                time.sleep(1)
-                logger.info("✓ Referral Sources selected: Agent")
-            except Exception as e:
-                raise Exception(f"Failed to select Referral Sources: {str(e)}")
+            # Use jQuery to set the Referral Sources value directly
+            # Agent has ID 28701
+            page.evaluate("""
+                $('#ProjectReferrer_ReferralSourceId').val('28701').trigger('change');
+            """)
+            time.sleep(1)
+            logger.info("✓ Referral Sources selected: Agent (ID: 28701)")
             
             # STEP 3: Project Type - EMS
             logger.info("STEP 3: Project Type...")
