@@ -753,13 +753,6 @@ async def get_analytics_summary(db: Session = Depends(get_db)):
     }
 
 
-if __name__ == "__main__":
-    import uvicorn
-    import os
-    port = int(os.getenv("PORT", 8080))
-    uvicorn.run(app, host="0.0.0.0", port=port)
-
-
 @app.post("/api/admin/update-contact-insurance")
 async def update_contact_insurance(
     contact_id: int,
@@ -798,3 +791,10 @@ async def update_contact_insurance(
             "success": False,
             "message": f"Error: {str(e)}"
         }
+
+
+if __name__ == "__main__":
+    import uvicorn
+    import os
+    port = int(os.getenv("PORT", 8080))
+    uvicorn.run(app, host="0.0.0.0", port=port)
