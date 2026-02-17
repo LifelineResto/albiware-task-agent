@@ -758,3 +758,43 @@ if __name__ == "__main__":
     import os
     port = int(os.getenv("PORT", 8080))
     uvicorn.run(app, host="0.0.0.0", port=port)
+
+
+@app.post("/api/admin/update-contact-insurance")
+async def update_contact_insurance(
+    contact_id: int,
+    has_insurance: bool,
+    db: Session = Depends(get_db)
+):
+    """
+    ADMIN ENDPOINT: Update a contact's insurance status
+    """
+    try:
+        contact = db.query(Contact).filter(Contact.id == contact_id).first()
+        
+        if not contact:
+            raise HTTPException(status_code=404, detail=f"Contact {contact_id} not found")
+        
+        old_value = contact.has_insurance
+        contact.has_insurance = has_insurance
+        db.commit()
+        
+        logger.info(f"Updated contact {contact.full_name} insurance: {old_value} → {has_insurance}")
+        
+        return {
+            "success": True,
+            "message": f"Updated insurance for {contact.full_name}",
+            "contact_id": contact_id,
+            "old_value": old_value,
+            "new_value": has_insurance
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating contact insurance: {e}")
+        db.rollback()
+        return {
+            "success": False,
+            "message": f"Error: {str(e)}"
+        }
