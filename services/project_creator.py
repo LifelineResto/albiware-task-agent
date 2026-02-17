@@ -224,22 +224,43 @@ class AlbiwareProjectCreator:
                 raise Exception(f"Customer selection failed - ExistingOrganizationId is empty")
             logger.info(f"✓ Customer selected (ID: {result.get('value')})")
             
-            # STEP 2: Referrer Option - Add Existing (MOVED UP FOR TESTING)
+            # STEP 2: Referrer Option - Add Existing
             logger.info("STEP 2: Referrer Option...")
             page.select_option('#ReferrerOption', label='Add Existing')
             time.sleep(2)  # Wait for Referral Sources field to appear
             logger.info("✓ Referrer Option set")
             
-            # STEP 2.5: Referral Sources - Select2 dropdown (MOVED UP FOR TESTING)
+            # STEP 2.5: Referral Sources - Select2 dropdown (same method as Customer)
             logger.info("STEP 2.5: Referral Sources...")
             
-            # Use jQuery to set the Referral Sources value directly
-            # Agent has ID 28701
-            page.evaluate("""
-                $('#ProjectReferrer_ReferralSourceId').val('28701').trigger('change');
-            """)
+            # Click on the Referral Sources dropdown to open it
+            # Find the span with role="listbox" that's associated with ProjectReferrer_ReferralSourceId
+            page.click('select#ProjectReferrer_ReferralSourceId + span[role="listbox"]')
             time.sleep(1)
-            logger.info("✓ Referral Sources selected: Agent (ID: 28701)")
+            
+            # Type "Agent" in the search box
+            search_input = page.locator('input[role="searchbox"]').last
+            search_input.fill('Agent')
+            time.sleep(1)
+            
+            # Press Arrow Down to highlight the first result
+            page.keyboard.press('ArrowDown')
+            time.sleep(0.5)
+            
+            # Press Enter to select
+            page.keyboard.press('Enter')
+            time.sleep(2)
+            
+            # Verify the selection
+            result = page.evaluate("""
+                (function() {
+                    var value = $('#ProjectReferrer_ReferralSourceId').val();
+                    return {value: value, success: !!value};
+                })()
+            """)
+            if not result.get('success'):
+                raise Exception(f"Referral Sources selection failed - value is empty")
+            logger.info(f"✓ Referral Sources selected: Agent (ID: {result.get('value')})")
             
             # STEP 3: Project Type - EMS
             logger.info("STEP 3: Project Type...")
