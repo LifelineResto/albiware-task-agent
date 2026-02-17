@@ -350,10 +350,11 @@ class AlbiwareProjectCreator:
             except:
                 pass
             
-            # Wait for redirect to project page
+            # Wait for redirect to project page with numeric ID
             # URL pattern: https://app.albiware.com/Project/{project_id}
+            # Must NOT match /Project/New
             logger.info("Waiting for redirect to project page...")
-            page.wait_for_url("**/Project/**", timeout=30000)
+            page.wait_for_url(lambda url: "/Project/" in url and "/Project/New" not in url, timeout=30000)
             
             # Extract project ID from URL
             current_url = page.url
