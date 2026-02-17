@@ -129,20 +129,20 @@ class AlbiwareProjectCreator:
         """Login to Albiware"""
         try:
             logger.info("Logging in to Albiware...")
-            page.goto(f"{self.albiware_url}/Login", wait_until="domcontentloaded", timeout=30000)
+            page.goto(f"{self.albiware_url}/Account/Login", wait_until="domcontentloaded", timeout=30000)
             
             # Wait for login form
             page.wait_for_selector('input#Email', timeout=15000)
             
             # Fill login form
             page.fill('input#Email', self.email)
-            page.fill('input#password', self.password)
+            page.fill('input#Password', self.password)
             
             # Click login button
             page.click('button[type="submit"]')
             
             # Wait for redirect to dashboard
-            page.wait_for_url("**/TaskDashboard", timeout=30000)
+            page.wait_for_url("**/Dashboard**", timeout=30000)
             logger.info("Login successful")
             
             return True
@@ -201,7 +201,7 @@ class AlbiwareProjectCreator:
             time.sleep(1)
             
             # Type the customer name in the search box
-            search_input = page.locator('#ExistingOrganizationId-list input[role="listbox"]')
+            search_input = page.locator('input[role="listbox"]')
             search_input.fill(contact.full_name)
             time.sleep(1)
             
@@ -223,23 +223,6 @@ class AlbiwareProjectCreator:
             if not result.get('success'):
                 raise Exception(f"Customer selection failed - ExistingOrganizationId is empty")
             logger.info(f"✓ Customer selected (ID: {result.get('value')})")
-            
-            # STEP 2: Referrer Option - Add Existing (MOVED UP FOR TESTING)
-            logger.info("STEP 2: Referrer Option...")
-            page.select_option('#ReferrerOption', label='Add Existing')
-            time.sleep(2)  # Wait for Referral Sources field to appear
-            logger.info("✓ Referrer Option set")
-            
-            # STEP 2.5: Referral Sources - Select2 dropdown (MOVED UP FOR TESTING)
-            logger.info("STEP 2.5: Referral Sources...")
-            
-            # Use jQuery to set the Referral Sources value directly
-            # Agent has ID 28701
-            page.evaluate("""
-                $('#ProjectReferrer_ReferralSourceId').val('28701').trigger('change');
-            """)
-            time.sleep(1)
-            logger.info("✓ Referral Sources selected: Agent (ID: 28701)")
             
             # STEP 3: Project Type - EMS
             logger.info("STEP 3: Project Type...")
@@ -273,8 +256,50 @@ class AlbiwareProjectCreator:
             time.sleep(1)
             logger.info(f"✓ Property Type: {prop_type}")
             
-            # STEP 5: Staff - Rodolfo Arceo
-            logger.info("STEP 5: Staff...")
+            # STEP 5: Insurance Info
+            logger.info("STEP 5: Insurance Info...")
+            has_ins = contact.has_insurance if contact.has_insurance is not None else False
+            page.select_option('#CoveredLoss', value=str(has_ins))
+            time.sleep(1)
+            logger.info(f"✓ Insurance Info: {'Yes' if has_ins else 'No'}")
+            
+            # STEP 6: Referrer Option - Add Existing
+            logger.info("STEP 6: Referrer Option...")
+            page.select_option('#ReferrerOption', label='Add Existing')
+            time.sleep(2)  # Wait for Referral Sources field to appear
+            logger.info("✓ Referrer Option set")
+            
+            # STEP 7: Referral Sources - CRITICAL FIX
+            # Must click dropdown and select an option using keyboard
+            logger.info("STEP 7: Referral Sources...")
+            
+            # Click on the Referral Sources dropdown
+            referral_dropdowns = page.locator('span[role="listbox"]:has-text("Choose One")')
+            # Get the one in the Referrer Information section (should be the 3rd one)
+            referral_dropdowns.nth(2).click()
+            time.sleep(1)
+            
+            # Press Arrow Down to select first option
+            page.keyboard.press('ArrowDown')
+            time.sleep(0.5)
+            
+            # Press Enter to select
+            page.keyboard.press('Enter')
+            time.sleep(1)
+            
+            # Verify
+            result = page.evaluate("""
+                (function() {
+                    var value = $('#ReferralSources').val();
+                    return {value: value, success: !!value};
+                })()
+            """)
+            if not result.get('success'):
+                raise Exception(f"Referral Sources selection failed")
+            logger.info(f"✓ Referral Sources selected (ID: {result.get('value')})")
+            
+            # STEP 8: Staff - Rodolfo Arceo
+            logger.info("STEP 8: Staff...")
             page.select_option('#StaffId', label='Rodolfo Arceo')
             time.sleep(2)  # Wait for Project Role options to load
             logger.info("✓ Staff set to Rodolfo Arceo")
@@ -296,14 +321,6 @@ class AlbiwareProjectCreator:
                 raise Exception(f"Project Role selection failed")
             logger.info(f"✓ Project Role set to Estimator (ID: {result.get('value')})")
             
-            # STEP 6: Insurance Info - SET THIS LAST TO PREVENT JAVASCRIPT FROM OVERWRITING IT
-            logger.info("STEP 6: Insurance Info (setting last to prevent override)...")
-            has_ins = contact.has_insurance if contact.has_insurance is not None else False
-            logger.info(f"DEBUG: contact.has_insurance = {contact.has_insurance}, has_ins = {has_ins}, str(has_ins) = {str(has_ins)}")
-            page.select_option('#CoveredLoss', value=str(has_ins))
-            time.sleep(1)
-            logger.info(f"✓ Insurance Info: {'Yes' if has_ins else 'No'}")
-            
             # Wait for all events to propagate
             time.sleep(2)
             
@@ -321,41 +338,12 @@ class AlbiwareProjectCreator:
         try:
             logger.info("Submitting form...")
             
-            # Check for any validation errors BEFORE submission
-            try:
-                errors_before = page.locator('.field-validation-error, .validation-summary-errors').all_text_contents()
-                if errors_before:
-                    logger.error(f"Validation errors BEFORE submit: {errors_before}")
-                    return None
-            except:
-                pass
-            
             # Click the Create button
-            logger.info("Clicking Create button...")
             page.click('input#SubmitButton[type="submit"]')
-            logger.info("Create button clicked, waiting for response...")
             
-            # Wait a moment for the page to process
-            time.sleep(3)
-            
-            # Check current URL immediately after click
-            current_url_after_click = page.url
-            logger.info(f"URL after clicking Create: {current_url_after_click}")
-            
-            # Check for validation errors AFTER submission
-            try:
-                errors_after = page.locator('.field-validation-error, .validation-summary-errors').all_text_contents()
-                if errors_after:
-                    logger.error(f"Validation errors AFTER submit: {errors_after}")
-                    return None
-            except:
-                pass
-            
-            # Wait for redirect to project page with numeric ID
+            # Wait for redirect to project page
             # URL pattern: https://app.albiware.com/Project/{project_id}
-            # Must NOT match /Project/New
-            logger.info("Waiting for redirect to project page...")
-            page.wait_for_url(lambda url: "/Project/" in url and "/Project/New" not in url, timeout=30000)
+            page.wait_for_url("**/Project/**", timeout=30000)
             
             # Extract project ID from URL
             current_url = page.url
@@ -384,41 +372,3 @@ class AlbiwareProjectCreator:
                 pass
             
             return None
-
-    def process_pending_projects(self, db: Session) -> int:
-        """Process all contacts that need project creation"""
-        from database.enhanced_models import Contact
-        
-        logger.info("=" * 50)
-        logger.info("STARTING PROJECT CREATION AUTOMATION")
-        logger.info("=" * 50)
-        
-        # Query contacts that need project creation
-        contacts = db.query(Contact).filter(
-            Contact.project_creation_needed == True,
-            Contact.project_created == False
-        ).all()
-        
-        logger.info(f"Query returned {len(contacts)} contacts needing project creation")
-        if contacts:
-            for c in contacts:
-                logger.info(f"  - Contact {c.id}: {c.full_name}, project_creation_needed={c.project_creation_needed}, project_created={c.project_created}")
-        else:
-            logger.warning("No contacts found matching criteria!")
-        
-        projects_created = 0
-        for contact in contacts:
-            try:
-                logger.info(f"Processing contact: {contact.full_name} (ID: {contact.id})")
-                success = self.create_project_for_contact(db, contact)
-                if success:
-                    projects_created += 1
-                    logger.info(f"✅ Successfully created project for {contact.full_name}")
-                else:
-                    logger.error(f"❌ Failed to create project for {contact.full_name}")
-            except Exception as e:
-                logger.error(f"Error processing contact {contact.id}: {e}")
-                continue
-        
-        logger.info(f"Project creation complete. Created {projects_created} projects.")
-        return projects_created
