@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from playwright.sync_api import sync_playwright, Page, Browser, TimeoutError as PlaywrightTimeout
 
 from database.enhanced_models import Contact, ProjectCreationLog
+from services.property_lookup import get_year_built, format_address_for_lookup
 
 logger = logging.getLogger(__name__)
 
@@ -318,6 +319,38 @@ class AlbiwareProjectCreator:
             page.select_option('#PropertyType', value=prop_type.lower())
             time.sleep(1)
             logger.info(f"✓ Property Type: {prop_type}")
+            
+            # STEP 4.5: Year Built - Lookup from property API
+            logger.info("STEP 4.5: Year Built (property API lookup)...")
+            year_built = None
+            
+            # Get customer address from Albiware contact
+            # Assuming contact has address fields - adjust based on actual schema
+            if hasattr(contact, 'address') and contact.address:
+                # Format address for API lookup
+                address_str = contact.address
+                logger.info(f"Looking up year built for address: {address_str}")
+                
+                # Call property API
+                year_built = get_year_built(address_str)
+                
+                if year_built:
+                    # Fill the Year Built field if it exists
+                    try:
+                        # Check if Year Built field exists on the page
+                        year_built_field = page.locator('#YearBuilt, input[name="YearBuilt"]').first
+                        if year_built_field.is_visible():
+                            year_built_field.fill(str(year_built))
+                            time.sleep(1)
+                            logger.info(f"✓ Year Built: {year_built}")
+                        else:
+                            logger.info("Year Built field not found on page (may not be required)")
+                    except Exception as e:
+                        logger.warning(f"Could not fill Year Built field: {e}")
+                else:
+                    logger.info("Year Built not found via property API (feature may be disabled)")
+            else:
+                logger.info("No address available for property lookup")
             
             # STEP 5: Staff - Rodolfo Arceo
             logger.info("STEP 5: Staff...")
