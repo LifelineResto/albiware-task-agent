@@ -224,6 +224,32 @@ class AlbiwareProjectCreator:
                 raise Exception(f"Customer selection failed - ExistingOrganizationId is empty")
             logger.info(f"✓ Customer selected (ID: {result.get('value')})")
             
+            # STEP 2: Referrer Option - Add Existing (MOVED UP FOR TESTING)
+            logger.info("STEP 2: Referrer Option...")
+            page.select_option('#ReferrerOption', label='Add Existing')
+            time.sleep(2)  # Wait for Referral Sources field to appear
+            logger.info("✓ Referrer Option set")
+            
+            # STEP 2.5: Referral Sources - Select2 dropdown (MOVED UP FOR TESTING)
+            logger.info("STEP 2.5: Referral Sources...")
+            
+            # Click on the Referral Sources Select2 dropdown by targeting the specific field
+            # The field ID is ProjectReferrer_ReferralSourceId
+            referral_sources_dropdown = page.locator('#select2-ProjectReferrer_ReferralSourceId-container')
+            referral_sources_dropdown.click()
+            time.sleep(2)
+            
+            # Wait for dropdown results to appear and click on "Agent" specifically
+            try:
+                # Select2 dropdown results appear in a ul.select2-results__options
+                # Click on the option with text "Agent"
+                agent_option = page.locator('ul.select2-results__options li:has-text("Agent")')
+                agent_option.click(force=True)
+                time.sleep(1)
+                logger.info("✓ Referral Sources selected: Agent")
+            except Exception as e:
+                raise Exception(f"Failed to select Referral Sources: {str(e)}")
+            
             # STEP 3: Project Type - EMS
             logger.info("STEP 3: Project Type...")
             result = page.evaluate("""
@@ -256,34 +282,8 @@ class AlbiwareProjectCreator:
             time.sleep(1)
             logger.info(f"✓ Property Type: {prop_type}")
             
-            # STEP 5: Referrer Option - Add Existing
-            logger.info("STEP 5: Referrer Option...")
-            page.select_option('#ReferrerOption', label='Add Existing')
-            time.sleep(2)  # Wait for Referral Sources field to appear
-            logger.info("✓ Referrer Option set")
-            
-            # STEP 6: Referral Sources - Select2 dropdown (MOVED UP FOR TESTING)
-            logger.info("STEP 6: Referral Sources...")
-            
-            # Click on the Referral Sources Select2 dropdown by targeting the specific field
-            # The field ID is ProjectReferrer_ReferralSourceId
-            referral_sources_dropdown = page.locator('#select2-ProjectReferrer_ReferralSourceId-container')
-            referral_sources_dropdown.click()
-            time.sleep(2)
-            
-            # Wait for dropdown results to appear and click on "Agent" specifically
-            try:
-                # Select2 dropdown results appear in a ul.select2-results__options
-                # Click on the option with text "Agent"
-                agent_option = page.locator('ul.select2-results__options li:has-text("Agent")')
-                agent_option.click(force=True)
-                time.sleep(1)
-                logger.info("✓ Referral Sources selected: Agent")
-            except Exception as e:
-                raise Exception(f"Failed to select Referral Sources: {str(e)}")
-            
-            # STEP 7: Insurance Info (MOVED DOWN)
-            logger.info("STEP 7: Insurance Info...")
+            # STEP 5: Insurance Info
+            logger.info("STEP 5: Insurance Info...")
             has_ins = contact.has_insurance if contact.has_insurance is not None else False
             page.select_option('#CoveredLoss', value=str(has_ins))
             time.sleep(1)
