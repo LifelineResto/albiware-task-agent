@@ -262,25 +262,42 @@ class AlbiwareProjectCreator:
                 raise Exception(f"Referral Sources selection failed - value is empty")
             logger.info(f"✓ Referral Sources selected: Plumber (ID: {result.get('value')})")
             
-            # STEP 3: Project Type - EMS
+            # STEP 3: Project Type - Dynamic based on contact data
             logger.info("STEP 3: Project Type...")
-            result = page.evaluate("""
-                (function() {
-                    try {
+            
+            # Get project type from contact, default to EMS
+            project_type = contact.project_type if contact.project_type else "Emergency Mitigation Services"
+            
+            # Map project type names to search keywords for Albiware dropdown
+            project_type_keywords = {
+                'Emergency Mitigation Services': 'Emergency Mitigation',
+                'Mold': 'Mold',
+                'Reconstruction': 'Reconstruction',
+                'Sewage': 'Sewage',
+                'Biohazard': 'Biohazard',
+                'Contents': 'Contents',
+                'Vandalism': 'Vandalism'
+            }
+            
+            search_keyword = project_type_keywords.get(project_type, 'Emergency Mitigation')
+            
+            result = page.evaluate(f"""
+                (function() {{
+                    try {{
                         var widget = $('#ProjectTypeId').data('kendoDropDownList');
-                        if (!widget) return {success: false, error: 'Widget not found'};
+                        if (!widget) return {{success: false, error: 'Widget not found'}};
                         var data = widget.dataSource.data();
-                        var emsOption = data.find(item => item.Text && item.Text.includes('Emergency Mitigation'));
-                        if (emsOption) {
-                            widget.value(emsOption.Value);
+                        var option = data.find(item => item.Text && item.Text.includes('{search_keyword}'));
+                        if (option) {{
+                            widget.value(option.Value);
                             widget.trigger('change');
-                            return {success: true, value: emsOption.Value, text: emsOption.Text};
-                        }
-                        return {success: false, error: 'EMS option not found'};
-                    } catch(e) {
-                        return {success: false, error: e.toString()};
-                    }
-                })()
+                            return {{success: true, value: option.Value, text: option.Text}};
+                        }}
+                        return {{success: false, error: 'Project type option not found: {search_keyword}'}};
+                    }} catch(e) {{
+                        return {{success: false, error: e.toString()}};
+                    }}
+                }})()
             """)
             if not result.get('success'):
                 raise Exception(f"Project Type failed: {result.get('error')}")

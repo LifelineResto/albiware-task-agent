@@ -194,10 +194,13 @@ class ConversationHandler:
                     message=(
                         f"Great! I need a few details to create the project for {contact.full_name}.\n\n"
                         "What type of project?\n"
-                        "1 - Water Damage\n"
-                        "2 - Fire Damage\n"
-                        "3 - Mold\n"
-                        "4 - Other"
+                        "1 - Emergency Mitigation Services\n"
+                        "2 - Mold\n"
+                        "3 - Reconstruction\n"
+                        "4 - Sewage\n"
+                        "5 - Biohazard\n"
+                        "6 - Contents\n"
+                        "7 - Vandalism"
                     ),
                     contact_id=contact.id,
                     conversation_id=conversation.id,
@@ -300,26 +303,38 @@ class ConversationHandler:
         contact = conversation.contact
         response = message_body.strip().lower()
         
-        # Map response to project type
+        # Map response to project type (matching Albiware options)
         project_type_map = {
-            '1': 'Water Damage',
-            '2': 'Fire Damage',
-            '3': 'Mold',
-            '4': 'Other'
+            '1': 'Emergency Mitigation Services',
+            '2': 'Mold',
+            '3': 'Reconstruction',
+            '4': 'Sewage',
+            '5': 'Biohazard',
+            '6': 'Contents',
+            '7': 'Vandalism'
         }
         
         # Check for valid response
-        if response in project_type_map or any(keyword in response for keyword in ['water', 'fire', 'mold', 'other']):
+        keywords = ['emergency', 'mitigation', 'ems', 'mold', 'reconstruction', 'sewage', 'biohazard', 'contents', 'vandalism']
+        if response in project_type_map or any(keyword in response for keyword in keywords):
             if response in project_type_map:
                 project_type = project_type_map[response]
-            elif 'water' in response:
-                project_type = 'Water Damage'
-            elif 'fire' in response:
-                project_type = 'Fire Damage'
+            elif 'emergency' in response or 'mitigation' in response or 'ems' in response:
+                project_type = 'Emergency Mitigation Services'
             elif 'mold' in response:
                 project_type = 'Mold'
+            elif 'reconstruction' in response or 'recon' in response:
+                project_type = 'Reconstruction'
+            elif 'sewage' in response:
+                project_type = 'Sewage'
+            elif 'biohazard' in response or 'bio' in response:
+                project_type = 'Biohazard'
+            elif 'contents' in response or 'content' in response:
+                project_type = 'Contents'
+            elif 'vandalism' in response:
+                project_type = 'Vandalism'
             else:
-                project_type = 'Other'
+                project_type = 'Emergency Mitigation Services'  # Default
             
             contact.project_type = project_type
             conversation.state = ConversationState.AWAITING_PROPERTY_TYPE
@@ -346,10 +361,13 @@ class ConversationHandler:
                 to_number=conversation.technician_phone,
                 message=(
                     "Please reply with:\n"
-                    "1 - Water Damage\n"
-                    "2 - Fire Damage\n"
-                    "3 - Mold\n"
-                    "4 - Other"
+                    "1 - Emergency Mitigation Services\n"
+                    "2 - Mold\n"
+                    "3 - Reconstruction\n"
+                    "4 - Sewage\n"
+                    "5 - Biohazard\n"
+                    "6 - Contents\n"
+                    "7 - Vandalism"
                 ),
                 contact_id=contact.id,
                 conversation_id=conversation.id,
