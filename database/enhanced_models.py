@@ -40,6 +40,7 @@ class ConversationState(str, enum.Enum):
     AWAITING_RESIDENTIAL_SUBTYPE = "awaiting_residential_subtype"
     AWAITING_INSURANCE = "awaiting_insurance"
     AWAITING_INSURANCE_COMPANY = "awaiting_insurance_company"
+    AWAITING_APPOINTMENT_DATETIME = "awaiting_appointment_datetime"
     AWAITING_REFERRAL_SOURCE = "awaiting_referral_source"
     COMPLETED = "completed"
 
@@ -91,6 +92,11 @@ class Contact(Base):
     # Asbestos Testing (for pre-1988 properties)
     asbestos_testing_required = Column(Boolean, default=False)
     asbestos_notification_sent_at = Column(DateTime, nullable=True)
+    
+    # Appointment Scheduling
+    appointment_datetime = Column(DateTime, nullable=True)  # Scheduled appointment date/time
+    appointment_created_in_calendar = Column(Boolean, default=False)  # Whether calendar event was created
+    calendar_event_id = Column(String(200), nullable=True)  # Google Calendar event ID
     
     # Follow-up Retry & Persistence Mode
     retry_count = Column(Integer, default=0)  # Number of times we've retried after NO response

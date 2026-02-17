@@ -68,6 +68,9 @@ class ConversationHandler:
             elif conversation.state == ConversationState.AWAITING_OUTCOME:
                 return self._handle_outcome_response(db, conversation, message_body)
             
+            elif conversation.state == ConversationState.AWAITING_APPOINTMENT_DATETIME:
+                return self._handle_appointment_datetime(db, conversation, message_body)
+            
             elif conversation.state == ConversationState.AWAITING_PROJECT_TYPE:
                 return self._handle_project_type(db, conversation, message_body)
             
@@ -193,24 +196,17 @@ class ConversationHandler:
                 contact.project_creation_needed = True
                 logger.info(f"Project creation needed for {contact.full_name}")
                 
-                # Start collecting project details
-                conversation.state = ConversationState.AWAITING_PROJECT_TYPE
+                # Ask for appointment date/time FIRST
+                conversation.state = ConversationState.AWAITING_APPOINTMENT_DATETIME
                 conversation.completed_at = None  # Reset completion
                 contact.status = ContactStatus.AWAITING_RESPONSE
                 
-                # Ask for project type
+                # Ask for appointment date and time
                 self.sms_service.send_sms(
                     to_number=conversation.technician_phone,
                     message=(
-                        f"Great! I need a few details to create the project for {contact.full_name}.\n\n"
-                        "What type of project?\n"
-                        "1 - Emergency Mitigation Services\n"
-                        "2 - Mold\n"
-                        "3 - Reconstruction\n"
-                        "4 - Sewage\n"
-                        "5 - Biohazard\n"
-                        "6 - Contents\n"
-                        "7 - Vandalism"
+                        f"Great! When is the appointment scheduled for {contact.full_name}?\n\n"
+                        f"Please provide the date and time (e.g., '02/20/2026 2:00 PM' or 'tomorrow at 10am')"
                     ),
                     contact_id=contact.id,
                     conversation_id=conversation.id,
@@ -567,6 +563,151 @@ class ConversationHandler:
             conversation_id=conversation.id,
             db=db
         )
+        
+        conversation.last_message_at = datetime.utcnow()
+        db.commit()
+        return True
+    
+    def _handle_appointment_datetime(self, db: Session, conversation: SMSConversation, message_body: str) -> bool:
+        """Handle appointment date/time response and create calendar event"""
+        from utils.datetime_parser import DateTimeParser
+        from services.google_calendar_service import GoogleCalendarService
+        
+        contact = conversation.contact
+        
+        # Parse date/time from message
+        appointment_dt = DateTimeParser.parse_appointment_datetime(message_body)
+        
+        if not appointment_dt:
+            # Failed to parse - ask again
+            self.sms_service.send_sms(
+                to_number=conversation.technician_phone,
+                message=(
+                    f"I couldn't understand that date/time. Please try again.\n\n"
+                    f"Examples:\n"
+                    f"• 02/20/2026 2:00 PM\n"
+                    f"• tomorrow at 10am\n"
+                    f"• next Tuesday 3pm"
+                ),
+                contact_id=contact.id,
+                conversation_id=conversation.id,
+                db=db
+            )
+            return False
+        
+        # Store appointment datetime
+        contact.appointment_datetime = appointment_dt
+        
+        try:
+            # Initialize calendar service
+            calendar_service = GoogleCalendarService()
+            
+            # Check for duplicate appointment
+            existing_event = calendar_service.check_duplicate_appointment(
+                customer_name=contact.full_name or "Unknown Customer",
+                customer_address=contact.address or "",
+                appointment_datetime=appointment_dt,
+                tolerance_hours=24
+            )
+            
+            if existing_event:
+                # Duplicate found - just confirm
+                contact.appointment_created_in_calendar = True
+                contact.calendar_event_id = existing_event.get('id')
+                
+                formatted_dt = DateTimeParser.format_datetime_for_sms(appointment_dt)
+                self.sms_service.send_sms(
+                    to_number=conversation.technician_phone,
+                    message=(
+                        f"✓ Appointment for {contact.full_name} on {formatted_dt} is already in the calendar.\n\n"
+                        f"Now I need a few details to create the project."
+                    ),
+                    contact_id=contact.id,
+                    conversation_id=conversation.id,
+                    db=db
+                )
+            else:
+                # Create new appointment
+                event_id = calendar_service.create_appointment(
+                    customer_name=contact.full_name or "Unknown Customer",
+                    customer_address=contact.address or "",
+                    appointment_datetime=appointment_dt,
+                    duration_hours=2,
+                    description=f"Appointment set by {conversation.technician_phone}"
+                )
+                
+                if event_id:
+                    contact.appointment_created_in_calendar = True
+                    contact.calendar_event_id = event_id
+                    
+                    formatted_dt = DateTimeParser.format_datetime_for_sms(appointment_dt)
+                    self.sms_service.send_sms(
+                        to_number=conversation.technician_phone,
+                        message=(
+                            f"✓ Appointment added to calendar for {contact.full_name} on {formatted_dt}\n\n"
+                            f"Now I need a few details to create the project."
+                        ),
+                        contact_id=contact.id,
+                        conversation_id=conversation.id,
+                        db=db
+                    )
+                else:
+                    # Calendar creation failed - continue anyway
+                    logger.warning(f"Failed to create calendar appointment for {contact.full_name}")
+                    self.sms_service.send_sms(
+                        to_number=conversation.technician_phone,
+                        message=(
+                            f"Note: Couldn't add to calendar automatically, but I'll continue.\n\n"
+                            f"Now I need a few details to create the project."
+                        ),
+                        contact_id=contact.id,
+                        conversation_id=conversation.id,
+                        db=db
+                    )
+            
+            # Move to project type question
+            conversation.state = ConversationState.AWAITING_PROJECT_TYPE
+            
+            # Ask for project type
+            self.sms_service.send_sms(
+                to_number=conversation.technician_phone,
+                message=(
+                    "What type of project?\n"
+                    "1 - Emergency Mitigation Services\n"
+                    "2 - Mold\n"
+                    "3 - Reconstruction\n"
+                    "4 - Sewage\n"
+                    "5 - Biohazard\n"
+                    "6 - Contents\n"
+                    "7 - Vandalism"
+                ),
+                contact_id=contact.id,
+                conversation_id=conversation.id,
+                db=db
+            )
+            
+        except Exception as e:
+            logger.error(f"Error creating calendar appointment: {e}")
+            # Continue with project creation even if calendar fails
+            conversation.state = ConversationState.AWAITING_PROJECT_TYPE
+            
+            self.sms_service.send_sms(
+                to_number=conversation.technician_phone,
+                message=(
+                    f"Got it. Now I need a few details to create the project.\n\n"
+                    "What type of project?\n"
+                    "1 - Emergency Mitigation Services\n"
+                    "2 - Mold\n"
+                    "3 - Reconstruction\n"
+                    "4 - Sewage\n"
+                    "5 - Biohazard\n"
+                    "6 - Contents\n"
+                    "7 - Vandalism"
+                ),
+                contact_id=contact.id,
+                conversation_id=conversation.id,
+                db=db
+            )
         
         conversation.last_message_at = datetime.utcnow()
         db.commit()
