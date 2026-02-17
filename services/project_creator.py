@@ -15,6 +15,7 @@ from playwright.sync_api import sync_playwright, Page, Browser, TimeoutError as 
 
 from database.enhanced_models import Contact, ProjectCreationLog
 from services.property_lookup import get_year_built, format_address_for_lookup
+from services.sms_service import SMSService
 
 logger = logging.getLogger(__name__)
 
@@ -347,6 +348,11 @@ class AlbiwareProjectCreator:
                             logger.info("Year Built field not found on page (may not be required)")
                     except Exception as e:
                         logger.warning(f"Could not fill Year Built field: {e}")
+                    
+                    # Check if asbestos testing is required (pre-1988 properties)
+                    if year_built < 1988:
+                        logger.info(f"Property built in {year_built} (pre-1988) - Asbestos testing required")
+                        self._send_asbestos_notification(db, contact, year_built)
                 else:
                     logger.info("Year Built not found via property API (feature may be disabled)")
             else:
@@ -463,6 +469,64 @@ class AlbiwareProjectCreator:
                 pass
             
             return None
+    
+    def _send_asbestos_notification(self, db: Session, contact: Contact, year_built: int) -> None:
+        """
+        Send SMS notification to technician about asbestos testing requirement
+        
+        Args:
+            db: Database session
+            contact: Contact object
+            year_built: Year the property was built
+        """
+        try:
+            import os
+            from twilio.rest import Client
+            
+            # Get technician phone number from contact's assigned staff
+            # For now, use the staff phone number from environment
+            staff_phone = os.getenv('STAFF_PHONE_NUMBERS', '').split(',')[0].strip()
+            
+            if not staff_phone:
+                logger.warning("No staff phone number configured for asbestos notification")
+                return
+            
+            # Create SMS message
+            message = (
+                f"⚠️ ASBESTOS TESTING REQUIRED\n\n"
+                f"Property: {contact.full_name}\n"
+                f"Address: {getattr(contact, 'address', 'N/A')}\n"
+                f"Year Built: {year_built}\n\n"
+                f"This property was built before 1988 and requires asbestos testing before work begins."
+            )
+            
+            # Send SMS using Twilio
+            account_sid = os.getenv('TWILIO_ACCOUNT_SID')
+            auth_token = os.getenv('TWILIO_AUTH_TOKEN')
+            from_number = os.getenv('TWILIO_FROM_NUMBER')
+            
+            if not all([account_sid, auth_token, from_number]):
+                logger.warning("Twilio credentials not configured, cannot send asbestos notification")
+                return
+            
+            client = Client(account_sid, auth_token)
+            sms = client.messages.create(
+                body=message,
+                from_=from_number,
+                to=staff_phone
+            )
+            
+            logger.info(f"✅ Asbestos notification sent to {staff_phone} (SID: {sms.sid})")
+            
+            # Store notification in database for tracking
+            contact.asbestos_testing_required = True
+            contact.asbestos_notification_sent_at = datetime.utcnow()
+            db.commit()
+            
+        except Exception as e:
+            logger.error(f"Failed to send asbestos notification: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
 
     def process_pending_projects(self, db: Session) -> int:
         """Process all contacts that need project creation"""

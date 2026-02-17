@@ -88,6 +88,10 @@ class Contact(Base):
     insurance_company = Column(String(200), nullable=True)
     referral_source = Column(String(100), nullable=True)  # Google, Yelp, Referral, Other
     
+    # Asbestos Testing (for pre-1988 properties)
+    asbestos_testing_required = Column(Boolean, default=False)
+    asbestos_notification_sent_at = Column(DateTime, nullable=True)
+    
     # Relationships
     conversations = relationship("SMSConversation", back_populates="contact")
     messages = relationship("SMSMessage", back_populates="contact")
