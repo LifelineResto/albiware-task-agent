@@ -272,19 +272,20 @@ class AlbiwareProjectCreator:
             # STEP 7: Referral Sources - Select2 dropdown
             logger.info("STEP 7: Referral Sources...")
             
-            # Click on the Referral Sources Select2 dropdown to open it
-            referral_dropdowns = page.locator('span[role="listbox"]:has-text("Choose One")')
-            referral_dropdowns.nth(2).click()  # 3rd "Choose One" is Referral Sources
+            # Click on the Referral Sources Select2 dropdown by targeting the specific field
+            # The field ID is ProjectReferrer_ReferralSourceId
+            referral_sources_dropdown = page.locator('#select2-ProjectReferrer_ReferralSourceId-container')
+            referral_sources_dropdown.click()
             time.sleep(2)
             
-            # Wait for dropdown results to appear and click the first REAL option (skip "Choose One")
+            # Wait for dropdown results to appear and click on "Agent" specifically
             try:
                 # Select2 dropdown results appear in a ul.select2-results__options
-                # The first li is "Choose One", so we need the second one (index 1)
-                first_real_option = page.locator('ul.select2-results__options li').nth(1)
-                first_real_option.click(force=True)
+                # Click on the option with text "Agent"
+                agent_option = page.locator('ul.select2-results__options li:has-text("Agent")')
+                agent_option.click(force=True)
                 time.sleep(1)
-                logger.info("✓ Referral Sources selected")
+                logger.info("✓ Referral Sources selected: Agent")
             except Exception as e:
                 raise Exception(f"Failed to select Referral Sources: {str(e)}")
             
