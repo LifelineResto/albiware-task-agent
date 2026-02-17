@@ -65,72 +65,18 @@ class GoogleSheetsService:
             Sheet ID if successful, None otherwise
         """
         try:
-            # Check if sheet ID is stored in environment
-            existing_sheet_id = os.getenv('EQUIPMENT_SHEET_ID')
-            if existing_sheet_id:
-                # Verify sheet exists
-                try:
-                    self.service.spreadsheets().get(spreadsheetId=existing_sheet_id).execute()
-                    logger.info(f"Using existing equipment sheet: {existing_sheet_id}")
-                    return existing_sheet_id
-                except HttpError:
-                    logger.warning(f"Stored sheet ID {existing_sheet_id} not accessible, creating new sheet")
+            # Use hardcoded sheet ID for Project Equipment Tracker
+            sheet_id = "1L9ixEKN166TQ2GeigUNVJ5OeQfcThaObQ787sU97k2o"
             
-            # Create new spreadsheet
-            spreadsheet = {
-                'properties': {
-                    'title': 'Equipment Tracking - Lifeline Restoration'
-                },
-                'sheets': [{
-                    'properties': {
-                        'title': 'Equipment Log',
-                        'gridProperties': {
-                            'frozenRowCount': 1
-                        }
-                    }
-                }]
-            }
-            
-            result = self.service.spreadsheets().create(body=spreadsheet).execute()
-            sheet_id = result['spreadsheetId']
-            
-            # Add headers
-            headers = [['Customer Name', 'Address', 'Date', 'Equipment List']]
-            self.service.spreadsheets().values().update(
-                spreadsheetId=sheet_id,
-                range='Equipment Log!A1:D1',
-                valueInputOption='RAW',
-                body={'values': headers}
-            ).execute()
-            
-            # Format headers (bold)
-            requests = [{
-                'repeatCell': {
-                    'range': {
-                        'sheetId': 0,
-                        'startRowIndex': 0,
-                        'endRowIndex': 1
-                    },
-                    'cell': {
-                        'userEnteredFormat': {
-                            'textFormat': {
-                                'bold': True
-                            }
-                        }
-                    },
-                    'fields': 'userEnteredFormat.textFormat.bold'
-                }
-            }]
-            
-            self.service.spreadsheets().batchUpdate(
-                spreadsheetId=sheet_id,
-                body={'requests': requests}
-            ).execute()
-            
-            logger.info(f"Created new equipment tracking sheet: {sheet_id}")
-            logger.info(f"View at: https://docs.google.com/spreadsheets/d/{sheet_id}/edit")
-            
-            return sheet_id
+            # Verify sheet exists and is accessible
+            try:
+                self.service.spreadsheets().get(spreadsheetId=sheet_id).execute()
+                logger.info(f"Using Project Equipment Tracker sheet: {sheet_id}")
+                return sheet_id
+            except HttpError as e:
+                logger.error(f"Cannot access Project Equipment Tracker sheet: {e}")
+                logger.info("Please share the sheet with: lifeline-orchestrator@lifeline-automation.iam.gserviceaccount.com")
+                return None
             
         except Exception as e:
             logger.error(f"Failed to get or create sheet: {e}")
@@ -160,10 +106,10 @@ class GoogleSheetsService:
             # Prepare row data
             row = [[customer_name, address, formatted_date, equipment_list]]
             
-            # Append to sheet
+            # Append to sheet (using Sheet1 as the default sheet name)
             self.service.spreadsheets().values().append(
                 spreadsheetId=self.sheet_id,
-                range='Equipment Log!A:D',
+                range='Sheet1!A:D',
                 valueInputOption='RAW',
                 insertDataOption='INSERT_ROWS',
                 body={'values': row}
