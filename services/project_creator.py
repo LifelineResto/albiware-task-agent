@@ -256,21 +256,14 @@ class AlbiwareProjectCreator:
             time.sleep(1)
             logger.info(f"✓ Property Type: {prop_type}")
             
-            # STEP 5: Insurance Info
-            logger.info("STEP 5: Insurance Info...")
-            has_ins = contact.has_insurance if contact.has_insurance is not None else False
-            page.select_option('#CoveredLoss', value=str(has_ins))
-            time.sleep(1)
-            logger.info(f"✓ Insurance Info: {'Yes' if has_ins else 'No'}")
-            
-            # STEP 6: Referrer Option - Add Existing
-            logger.info("STEP 6: Referrer Option...")
+            # STEP 5: Referrer Option - Add Existing
+            logger.info("STEP 5: Referrer Option...")
             page.select_option('#ReferrerOption', label='Add Existing')
             time.sleep(2)  # Wait for Referral Sources field to appear
             logger.info("✓ Referrer Option set")
             
-            # STEP 7: Referral Sources - Select2 dropdown
-            logger.info("STEP 7: Referral Sources...")
+            # STEP 6: Referral Sources - Select2 dropdown (MOVED UP FOR TESTING)
+            logger.info("STEP 6: Referral Sources...")
             
             # Click on the Referral Sources Select2 dropdown by targeting the specific field
             # The field ID is ProjectReferrer_ReferralSourceId
@@ -288,6 +281,13 @@ class AlbiwareProjectCreator:
                 logger.info("✓ Referral Sources selected: Agent")
             except Exception as e:
                 raise Exception(f"Failed to select Referral Sources: {str(e)}")
+            
+            # STEP 7: Insurance Info (MOVED DOWN)
+            logger.info("STEP 7: Insurance Info...")
+            has_ins = contact.has_insurance if contact.has_insurance is not None else False
+            page.select_option('#CoveredLoss', value=str(has_ins))
+            time.sleep(1)
+            logger.info(f"✓ Insurance Info: {'Yes' if has_ins else 'No'}")
             
             # STEP 8: Staff - Rodolfo Arceo
             logger.info("STEP 8: Staff...")
