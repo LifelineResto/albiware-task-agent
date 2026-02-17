@@ -262,7 +262,7 @@ class AlbiwareProjectCreator:
                 raise Exception(f"Referral Sources selection failed - value is empty")
             logger.info(f"✓ Referral Sources selected: Plumber (ID: {result.get('value')})")
             
-            # STEP 3: Project Type - Dynamic based on contact data
+            # STEP 3: Project Type - UI interaction method
             logger.info("STEP 3: Project Type...")
             
             # Get project type from contact, default to EMS
@@ -270,7 +270,7 @@ class AlbiwareProjectCreator:
             
             # Map project type names to search keywords for Albiware dropdown
             project_type_keywords = {
-                'Emergency Mitigation Services': 'Emergency Mitigation',
+                'Emergency Mitigation Services': 'Emergency',
                 'Mold': 'Mold',
                 'Reconstruction': 'Reconstruction',
                 'Sewage': 'Sewage',
@@ -279,29 +279,37 @@ class AlbiwareProjectCreator:
                 'Vandalism': 'Vandalism'
             }
             
-            search_keyword = project_type_keywords.get(project_type, 'Emergency Mitigation')
+            search_keyword = project_type_keywords.get(project_type, 'Emergency')
             
-            result = page.evaluate(f"""
-                (function() {{
-                    try {{
-                        var widget = $('#ProjectTypeId').data('kendoDropDownList');
-                        if (!widget) return {{success: false, error: 'Widget not found'}};
-                        var data = widget.dataSource.data();
-                        var option = data.find(item => item.Text && item.Text.includes('{search_keyword}'));
-                        if (option) {{
-                            widget.value(option.Value);
-                            widget.trigger('change');
-                            return {{success: true, value: option.Value, text: option.Text}};
-                        }}
-                        return {{success: false, error: 'Project type option not found: {search_keyword}'}};
-                    }} catch(e) {{
-                        return {{success: false, error: e.toString()}};
-                    }}
-                }})()
+            # Click on the Project Type dropdown to open it
+            page.click('span[aria-owns="ProjectTypeId_listbox"]')
+            time.sleep(1)
+            
+            # Type the search keyword in the search box
+            search_input = page.locator('input[role="listbox"]').first
+            search_input.fill(search_keyword)
+            time.sleep(1)
+            
+            # Press Arrow Down to highlight the first result
+            page.keyboard.press('ArrowDown')
+            time.sleep(0.5)
+            
+            # Press Enter to select
+            page.keyboard.press('Enter')
+            time.sleep(2)
+            
+            # Verify the selection
+            result = page.evaluate("""
+                (function() {
+                    var widget = $('#ProjectTypeId').data('kendoDropDownList');
+                    if (!widget) return {success: false, error: 'Widget not found'};
+                    var value = widget.value();
+                    var text = widget.text();
+                    return {success: !!value, value: value, text: text};
+                })()
             """)
             if not result.get('success'):
-                raise Exception(f"Project Type failed: {result.get('error')}")
-            time.sleep(1)
+                raise Exception(f"Project Type selection failed")
             logger.info(f"✓ Project Type set to: {result.get('text')}")
             
             # STEP 4: Property Type
