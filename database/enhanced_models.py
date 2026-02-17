@@ -92,6 +92,13 @@ class Contact(Base):
     asbestos_testing_required = Column(Boolean, default=False)
     asbestos_notification_sent_at = Column(DateTime, nullable=True)
     
+    # Follow-up Retry & Persistence Mode
+    retry_count = Column(Integer, default=0)  # Number of times we've retried after NO response
+    last_retry_at = Column(DateTime, nullable=True)  # When we last sent a retry
+    persistence_mode = Column(Boolean, default=False)  # Whether we're in 10-min persistence mode
+    persistence_count = Column(Integer, default=0)  # Number of persistence follow-ups sent
+    last_persistence_at = Column(DateTime, nullable=True)  # When we last sent a persistence message
+    
     # Relationships
     conversations = relationship("SMSConversation", back_populates="contact")
     messages = relationship("SMSMessage", back_populates="contact")

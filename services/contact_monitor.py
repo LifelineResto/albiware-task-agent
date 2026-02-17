@@ -194,7 +194,10 @@ class ContactMonitor:
         
         # Construct message
         contact_name = contact.full_name or "the new contact"
-        message = f"Hi Rudy, were you able to make contact with {contact_name} yet? Reply YES or NO."
+        message = (
+            f"Hi Rudy, were you able to make contact with {contact_name} yet? Reply YES or NO.\n\n"
+            f"(Note: If no response is received, this will enter persistence mode with follow-ups every 10 minutes)"
+        )
         
         # Send SMS
         success = self.sms_service.send_sms(

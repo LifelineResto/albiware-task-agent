@@ -23,6 +23,7 @@ from services.notification_engine import NotificationEngine
 from services.contact_monitor import ContactMonitor
 from services.conversation_handler import ConversationHandler
 from services.project_creator import AlbiwareProjectCreator
+from services.retry_persistence_scheduler import RetryPersistenceScheduler
 
 # Configure logging
 logging.basicConfig(
@@ -60,6 +61,7 @@ notification_engine = NotificationEngine(
 # Initialize contact monitoring services
 contact_monitor = ContactMonitor(albiware_client, sms_service)
 conversation_handler = ConversationHandler(sms_service)
+retry_persistence_scheduler = RetryPersistenceScheduler(sms_service)
 
 # Initialize project creator (with Albiware credentials)
 project_creator = AlbiwareProjectCreator(
@@ -155,6 +157,23 @@ def scheduled_project_creation():
         db.close()
 
 
+def scheduled_retry_persistence():
+    """Scheduled task to process 2-hour retries and 10-minute persistence follow-ups."""
+    logger.info("Starting scheduled retry/persistence processing...")
+    
+    db_gen = database.get_session()
+    db = next(db_gen)
+    
+    try:
+        results = retry_persistence_scheduler.process_retries_and_persistence(db)
+        logger.info(f"Sent {results['retries_sent']} retries and {results['persistence_sent']} persistence messages")
+        
+    except Exception as e:
+        logger.error(f"Error in scheduled retry/persistence: {e}")
+    finally:
+        db.close()
+
+
 @app.on_event("startup")
 async def startup_event():
     """Initialize database and start scheduler on application startup."""
@@ -188,6 +207,15 @@ async def startup_event():
         trigger=IntervalTrigger(minutes=5),
         id='project_creation_job',
         name='Create projects for appointments',
+        replace_existing=True
+    )
+    
+    # Start retry/persistence scheduler (every 5 minutes to catch both 2-hour and 10-minute intervals)
+    scheduler.add_job(
+        scheduled_retry_persistence,
+        trigger=IntervalTrigger(minutes=5),
+        id='retry_persistence_job',
+        name='Process retries and persistence follow-ups',
         replace_existing=True
     )
     

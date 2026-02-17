@@ -109,6 +109,11 @@ class ConversationHandler:
             contact.status = ContactStatus.CONTACT_MADE
             contact.contact_made_at = datetime.utcnow()
             
+            # Exit persistence mode if active
+            if contact.persistence_mode:
+                logger.info(f"Exiting persistence mode for {contact.full_name}")
+                contact.persistence_mode = False
+            
             # Ask for outcome
             outcome_message = (
                 f"Great! What was the outcome with {contact.full_name}?\n\n"
@@ -129,18 +134,20 @@ class ConversationHandler:
             
         # Check for NO
         elif self._is_no_response(response_lower):
-            logger.info(f"Technician has not made contact with {contact.full_name}")
+            logger.info(f"Technician has not made contact with {contact.full_name} - scheduling 2-hour retry")
             
             conversation.contact_confirmed = False
-            conversation.state = ConversationState.COMPLETED
-            conversation.completed_at = datetime.utcnow()
-            contact.status = ContactStatus.NO_CONTACT
-            contact.completed_at = datetime.utcnow()
+            # Keep conversation in AWAITING_CONTACT_CONFIRMATION state for retry
+            # DO NOT complete the conversation
             
-            # Send acknowledgment
+            # Track retry
+            contact.retry_count = (contact.retry_count or 0) + 1
+            contact.last_retry_at = datetime.utcnow()
+            
+            # Send acknowledgment with retry notice
             self.sms_service.send_sms(
                 to_number=conversation.technician_phone,
-                message=f"Got it. I'll follow up about {contact.full_name} later.",
+                message=f"Got it. I'll check back with you in 2 hours about {contact.full_name}.",
                 contact_id=contact.id,
                 conversation_id=conversation.id,
                 db=db
