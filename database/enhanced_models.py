@@ -41,6 +41,7 @@ class ConversationState(str, enum.Enum):
     AWAITING_INSURANCE = "awaiting_insurance"
     AWAITING_INSURANCE_COMPANY = "awaiting_insurance_company"
     AWAITING_APPOINTMENT_DATETIME = "awaiting_appointment_datetime"
+    AWAITING_APPOINTMENT_CONFLICT_CONFIRMATION = "awaiting_appointment_conflict_confirmation"
     AWAITING_REFERRAL_SOURCE = "awaiting_referral_source"
     COMPLETED = "completed"
 

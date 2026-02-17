@@ -71,6 +71,9 @@ class ConversationHandler:
             elif conversation.state == ConversationState.AWAITING_APPOINTMENT_DATETIME:
                 return self._handle_appointment_datetime(db, conversation, message_body)
             
+            elif conversation.state == ConversationState.AWAITING_APPOINTMENT_CONFLICT_CONFIRMATION:
+                return self._handle_appointment_conflict_confirmation(db, conversation, message_body)
+            
             elif conversation.state == ConversationState.AWAITING_PROJECT_TYPE:
                 return self._handle_project_type(db, conversation, message_body)
             
@@ -303,6 +306,130 @@ class ConversationHandler:
         
         db.add(message)
         db.flush()
+    
+    def _handle_appointment_conflict_confirmation(self, db: Session, conversation: SMSConversation, message_body: str) -> bool:
+        """Handle YES/NO confirmation for appointment time slot conflict"""
+        from utils.datetime_parser import DateTimeParser
+        from services.google_calendar_service import GoogleCalendarService
+        
+        contact = conversation.contact
+        response = message_body.strip().upper()
+        
+        if response == 'YES' or response == 'Y':
+            # Technician confirmed - create appointment despite conflict
+            try:
+                calendar_service = GoogleCalendarService()
+                
+                event_id = calendar_service.create_appointment(
+                    customer_name=contact.full_name or "Unknown Customer",
+                    customer_address=contact.address or "",
+                    appointment_datetime=contact.appointment_datetime,
+                    duration_hours=2,
+                    description=f"Appointment set by {conversation.technician_phone} (time slot conflict confirmed)"
+                )
+                
+                if event_id:
+                    contact.appointment_created_in_calendar = True
+                    contact.calendar_event_id = event_id
+                    
+                    formatted_dt = DateTimeParser.format_datetime_for_sms(contact.appointment_datetime)
+                    self.sms_service.send_sms(
+                        to_number=conversation.technician_phone,
+                        message=(
+                            f"✓ Appointment added to calendar for {contact.full_name} on {formatted_dt}\n\n"
+                            f"Now I need a few details to create the project."
+                        ),
+                        contact_id=contact.id,
+                        conversation_id=conversation.id,
+                        db=db
+                    )
+                else:
+                    # Calendar creation failed - continue anyway
+                    logger.warning(f"Failed to create calendar appointment for {contact.full_name}")
+                    self.sms_service.send_sms(
+                        to_number=conversation.technician_phone,
+                        message=(
+                            f"Note: Couldn't add to calendar automatically, but I'll continue.\n\n"
+                            f"Now I need a few details to create the project."
+                        ),
+                        contact_id=contact.id,
+                        conversation_id=conversation.id,
+                        db=db
+                    )
+                
+                # Move to project type question
+                conversation.state = ConversationState.AWAITING_PROJECT_TYPE
+                
+                # Ask for project type
+                self.sms_service.send_sms(
+                    to_number=conversation.technician_phone,
+                    message=(
+                        "What type of project?\n"
+                        "1 - Emergency Mitigation Services\n"
+                        "2 - Mold\n"
+                        "3 - Reconstruction\n"
+                        "4 - Sewage\n"
+                        "5 - Biohazard\n"
+                        "6 - Contents\n"
+                        "7 - Vandalism"
+                    ),
+                    contact_id=contact.id,
+                    conversation_id=conversation.id,
+                    db=db
+                )
+                
+            except Exception as e:
+                logger.error(f"Error creating calendar appointment: {e}")
+                # Continue with project creation even if calendar fails
+                conversation.state = ConversationState.AWAITING_PROJECT_TYPE
+                
+                self.sms_service.send_sms(
+                    to_number=conversation.technician_phone,
+                    message=(
+                        f"Got it. Now I need a few details to create the project.\n\n"
+                        "What type of project?\n"
+                        "1 - Emergency Mitigation Services\n"
+                        "2 - Mold\n"
+                        "3 - Reconstruction\n"
+                        "4 - Sewage\n"
+                        "5 - Biohazard\n"
+                        "6 - Contents\n"
+                        "7 - Vandalism"
+                    ),
+                    contact_id=contact.id,
+                    conversation_id=conversation.id,
+                    db=db
+                )
+        
+        elif response == 'NO' or response == 'N':
+            # Technician wants to choose a different time
+            conversation.state = ConversationState.AWAITING_APPOINTMENT_DATETIME
+            
+            self.sms_service.send_sms(
+                to_number=conversation.technician_phone,
+                message=(
+                    f"No problem. When is the appointment scheduled for {contact.full_name}?\n\n"
+                    f"Please provide the date and time (e.g., '02/20/2026 2:00 PM' or 'tomorrow at 10am')"
+                ),
+                contact_id=contact.id,
+                conversation_id=conversation.id,
+                db=db
+            )
+        
+        else:
+            # Invalid response - ask again
+            self.sms_service.send_sms(
+                to_number=conversation.technician_phone,
+                message="Please reply YES to confirm the appointment or NO to choose a different time.",
+                contact_id=contact.id,
+                conversation_id=conversation.id,
+                db=db
+            )
+            return False
+        
+        conversation.last_message_at = datetime.utcnow()
+        db.commit()
+        return True
 
     def _handle_project_type(self, db: Session, conversation: SMSConversation, message_body: str) -> bool:
         """Handle project type response"""
@@ -602,7 +729,7 @@ class ConversationHandler:
             # Initialize calendar service
             calendar_service = GoogleCalendarService()
             
-            # Check for duplicate appointment
+            # First check for duplicate appointment (same customer)
             existing_event = calendar_service.check_duplicate_appointment(
                 customer_name=contact.full_name or "Unknown Customer",
                 customer_address=contact.address or "",
@@ -626,8 +753,70 @@ class ConversationHandler:
                     conversation_id=conversation.id,
                     db=db
                 )
+                
+                # Move to project type question
+                conversation.state = ConversationState.AWAITING_PROJECT_TYPE
+                
+                # Ask for project type
+                self.sms_service.send_sms(
+                    to_number=conversation.technician_phone,
+                    message=(
+                        "What type of project?\n"
+                        "1 - Emergency Mitigation Services\n"
+                        "2 - Mold\n"
+                        "3 - Reconstruction\n"
+                        "4 - Sewage\n"
+                        "5 - Biohazard\n"
+                        "6 - Contents\n"
+                        "7 - Vandalism"
+                    ),
+                    contact_id=contact.id,
+                    conversation_id=conversation.id,
+                    db=db
+                )
             else:
-                # Create new appointment
+                # Check for time slot conflict (any appointment in this time)
+                conflicting_event = calendar_service.check_time_slot_conflict(
+                    appointment_datetime=appointment_dt,
+                    duration_hours=2
+                )
+                
+                if conflicting_event:
+                    # Time slot is occupied - ask for confirmation
+                    formatted_dt = DateTimeParser.format_datetime_for_sms(appointment_dt)
+                    conflict_summary = conflicting_event.get('summary', 'Another appointment')
+                    
+                    # Parse conflict start time
+                    conflict_start_str = conflicting_event.get('start', {}).get('dateTime', '')
+                    if conflict_start_str:
+                        try:
+                            from dateutil import parser as dateutil_parser
+                            conflict_start = dateutil_parser.parse(conflict_start_str)
+                            conflict_time = DateTimeParser.format_datetime_for_sms(conflict_start)
+                        except:
+                            conflict_time = conflict_start_str
+                    else:
+                        conflict_time = "that time"
+                    
+                    # Send warning and ask for confirmation
+                    conversation.state = ConversationState.AWAITING_APPOINTMENT_CONFLICT_CONFIRMATION
+                    
+                    self.sms_service.send_sms(
+                        to_number=conversation.technician_phone,
+                        message=(
+                            f"⚠️ TIME SLOT CONFLICT\n\n"
+                            f"There is already an appointment scheduled:\n"
+                            f"• {conflict_summary}\n"
+                            f"• {conflict_time}\n\n"
+                            f"Do you still want to schedule {contact.full_name} for {formatted_dt}?\n\n"
+                            f"Reply YES to confirm or NO to choose a different time."
+                        ),
+                        contact_id=contact.id,
+                        conversation_id=conversation.id,
+                        db=db
+                    )
+                else:
+                    # No conflict - create appointment
                 event_id = calendar_service.create_appointment(
                     customer_name=contact.full_name or "Unknown Customer",
                     customer_address=contact.address or "",

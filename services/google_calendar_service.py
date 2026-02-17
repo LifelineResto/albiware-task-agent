@@ -172,6 +172,51 @@ class GoogleCalendarService:
             logger.error(f"Error checking duplicates: {e}")
             return None
     
+    def check_time_slot_conflict(
+        self,
+        appointment_datetime: datetime,
+        duration_hours: int = 2
+    ) -> Optional[Dict]:
+        """
+        Check if ANY appointment exists in the requested time slot
+        
+        Args:
+            appointment_datetime: Start date/time of requested appointment
+            duration_hours: Duration of appointment in hours (default 2)
+            
+        Returns:
+            Conflicting event dict if found, None if slot is free
+        """
+        try:
+            # Calculate time window for the appointment
+            end_datetime = appointment_datetime + timedelta(hours=duration_hours)
+            
+            # Query events in this time range
+            events_result = self.service.events().list(
+                calendarId=self.calendar_id,
+                timeMin=appointment_datetime.isoformat() + 'Z',
+                timeMax=end_datetime.isoformat() + 'Z',
+                singleEvents=True,
+                orderBy='startTime'
+            ).execute()
+            
+            events = events_result.get('items', [])
+            
+            if events:
+                # Return the first conflicting event
+                conflicting_event = events[0]
+                logger.info(f"Found time slot conflict: {conflicting_event.get('summary')} at {conflicting_event.get('start')}")
+                return conflicting_event
+            
+            return None
+            
+        except HttpError as e:
+            logger.error(f"HTTP error checking time slot: {e}")
+            return None
+        except Exception as e:
+            logger.error(f"Error checking time slot: {e}")
+            return None
+    
     def get_appointment(self, event_id: str) -> Optional[Dict]:
         """
         Get appointment details by event ID
